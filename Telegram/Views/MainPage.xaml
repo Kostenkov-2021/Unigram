@@ -582,12 +582,31 @@
                                         </controls:ChatFoldersNavView>
                                     </Grid>
                                 </Border>
-                                <Grid x:Name="BannerMaster">
+                                <controls:SlidePanel x:Name="BannerMaster"
+                                                     CardBackground="{ThemeResource TextControlBackground}"
+                                                     CardBorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                                     CardCornerRadius="16"
+                                                     IsCardShadowVisible="False"
+                                                     SizeChanged="BannerMaster_SizeChanged"
+                                                     Margin="16,4,16,0">
+                                    <controls:FrozenAccountCard x:Name="FrozenCard"
+                                                                x:Load="False"
+                                                                Click="{x:Bind ViewModel.UnfreezeAccount}"
+                                                                Canvas.ZIndex="1" />
+                                    <controls:ChatListHintCard x:Name="HintCard"
+                                                               x:Load="False"
+                                                               Click="HintCard_Click"
+                                                               HideClick="HintCard_HideClick"
+                                                               Canvas.ZIndex="1" />
+                                    <controls:UnconfirmedSessionCard x:Name="UnconfirmedCard"
+                                                                     x:Load="False"
+                                                                     ConfirmClick="{x:Bind ViewModel.ConfirmSession}"
+                                                                     DenyClick="{x:Bind ViewModel.DenySession}"
+                                                                     Canvas.ZIndex="1" />
                                     <controls:PlaybackMasterHeader x:Name="PlaybackMaster"
                                                                    x:Load="False"
-                                                                   Visibility="Collapsed"
-                                                                   Margin="16,4,16,4" />
-                                </Grid>
+                                                                   Canvas.ZIndex="1" />
+                                </controls:SlidePanel>
                             </StackPanel>
 
                             <views:ForumView x:Name="TopicListPresenter"
@@ -621,20 +640,6 @@
                                                        Grid.RowSpan="2">
                                 <ListView.Header>
                                     <StackPanel>
-                                        <Grid Visibility="{x:Bind UpdateScrollingHostHeaderVisibility(MasterDetail.CurrentState, ViewModel.IsPrimaryFolderSelected), Mode=OneWay}">
-                                            <controls:SuggestedActionSetBirthdateCard x:Name="SetBirthdateCard"
-                                                                                      x:Load="False"
-                                                                                      Click="{x:Bind ViewModel.SetBirthdate}"
-                                                                                      HideClick="{x:Bind ViewModel.HideBirthdate}" />
-                                            <controls:UnconfirmedSessionCard x:Name="UnconfirmedCard"
-                                                                             x:Load="False"
-                                                                             ConfirmClick="{x:Bind ViewModel.ConfirmSession}"
-                                                                             DenyClick="{x:Bind ViewModel.DenySession}" />
-                                            <controls:FrozenAccountCard x:Name="FrozenCard"
-                                                                        x:Load="False"
-                                                                        Click="{x:Bind ViewModel.UnfreezeAccount}" />
-                                        </Grid>
-
                                         <Grid x:Name="ArchivedChatsPresenter">
                                             <Border x:Name="ArchivedChatsPanel">
                                                 <Button Visibility="{x:Bind ArchivedChats.Visibility, Mode=OneWay}"

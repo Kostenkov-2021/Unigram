@@ -9,6 +9,7 @@ using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
@@ -81,6 +82,9 @@ namespace Telegram.Views
 
         private bool _unloaded;
 
+        // The local date the banner hints were last picked on.
+        private DateTime _bannerHintsDate;
+
         private readonly ThemeShadowEx _navigationShadow;
 
         public MainPage()
@@ -121,6 +125,10 @@ namespace Telegram.Views
             ElementCompositionPreview.SetIsTranslationEnabled(ManagePanel, true);
             ElementCompositionPreview.SetIsTranslationEnabled(DialogsPanel, true);
             ElementCompositionPreview.SetIsTranslationEnabled(SearchField, true);
+            ElementCompositionPreview.SetIsTranslationEnabled(ChatsList, true);
+
+            // A row that is alone slides in from above the panel, which nothing covers here.
+            BannerMaster.CreateInsetClip();
 
             _navigationShadow = new ThemeShadowEx(Navigation, Constants.BubbleElevation);
 
@@ -565,7 +573,11 @@ namespace Telegram.Views
         {
             if (update.User.Id == _clientService.Options.MyId)
             {
-                this.BeginOnUIThread(() => UpdateUser(update.User));
+                this.BeginOnUIThread(() =>
+                {
+                    UpdateUser(update.User);
+                    UpdateBannerHints();
+                });
             }
         }
 
@@ -749,45 +761,12 @@ namespace Telegram.Views
 
         public void Handle(UpdateUnconfirmedSession update)
         {
-            this.BeginOnUIThread(() =>
-            {
-                if (update.Session == null)
-                {
-                    UnloadObject(UnconfirmedCard);
-
-                    SetBirthdateCard?.Visibility = Visibility.Visible;
-                }
-                else
-                {
-                    FindName(nameof(UnconfirmedCard));
-                    UnconfirmedCard.Update(update.Session);
-
-                    SetBirthdateCard?.Visibility = Visibility.Collapsed;
-                }
-            });
+            this.BeginOnUIThread(UpdateBannerHints);
         }
 
         public void Handle(UpdateFreezeState update)
         {
-            this.BeginOnUIThread(() =>
-            {
-                if (update.IsFrozen)
-                {
-                    FindName(nameof(FrozenCard));
-
-                    SetBirthdateCard?.Visibility = Visibility.Collapsed;
-
-                    UnconfirmedCard?.Visibility = Visibility.Collapsed;
-                }
-                else
-                {
-                    UnloadObject(FrozenCard);
-
-                    SetBirthdateCard?.Visibility = Visibility.Visible;
-
-                    UnconfirmedCard?.Visibility = Visibility.Visible;
-                }
-            });
+            this.BeginOnUIThread(UpdateBannerHints);
         }
 
         public void Handle(UpdateConnectionState update)
@@ -819,17 +798,20 @@ namespace Telegram.Views
 
         public void Handle(UpdateSuggestedActions update)
         {
-            this.BeginOnUIThread(() =>
+            this.BeginOnUIThread(UpdateBannerHints);
+        }
+
+        public void Handle(UpdateContactCloseBirthdays update)
+        {
+            this.BeginOnUIThread(UpdateBannerHints);
+        }
+
+        public void Handle(UpdateUserFullInfo update)
+        {
+            if (update.UserId == _clientService.Options.MyId)
             {
-                if (_clientService.HasSuggestedAction(new SuggestedActionSetBirthdate()))
-                {
-                    FindName(nameof(SetBirthdateCard));
-                }
-                else
-                {
-                    UnloadObject(SetBirthdateCard);
-                }
-            });
+                this.BeginOnUIThread(UpdateBannerHints);
+            }
         }
 
         public void Handle(UpdateOption update)
@@ -837,6 +819,202 @@ namespace Telegram.Views
             if (update.Name == OptionsService.R.ExpectBlocking || update.Name == OptionsService.R.EnabledProxyId)
             {
                 this.BeginOnUIThread(() => SetProxyVisibility(_clientService.Options.ExpectBlocking, _clientService.Options.EnabledProxyId, _clientService.ConnectionState));
+            }
+            else if (update.Name == OptionsService.R.IsPremiumAvailable || update.Name == OptionsService.R.IsPremium)
+            {
+                this.BeginOnUIThread(UpdateBannerHints);
+            }
+        }
+
+        private void UpdateBannerHints()
+        {
+            var visible = MasterDetail.CurrentState != MasterDetailState.Compact && ViewModel.IsPrimaryFolderSelected;
+            var frozen = visible && _clientService.FreezeState.IsFrozen;
+
+            // Null while the account is frozen, where the frozen row takes its place.
+            var hint = visible ? ViewModel.GetChatListHint() : null;
+            var session = visible && !frozen ? _clientService.UnconfirmedSession : null;
+
+            if (frozen)
+            {
+                FindName(nameof(FrozenCard));
+            }
+
+            // Updated only while shown, so a row sliding out keeps its content.
+            if (hint != null)
+            {
+                FindName(nameof(HintCard));
+                HintCard.Update(_clientService, hint);
+            }
+
+            if (session != null)
+            {
+                FindName(nameof(UnconfirmedCard));
+                UnconfirmedCard.Update(session);
+            }
+
+            ShowHideBannerRow(FrozenCard, frozen);
+            ShowHideBannerRow(HintCard, hint != null);
+            ShowHideBannerRow(UnconfirmedCard, session != null);
+
+            UpdateBannerHeight(BannerMaster.ActualSize.X > 0);
+
+            _bannerHintsDate = DateTime.Today;
+        }
+
+        private void ShowHideBannerRow(ISlidePanelChild row, bool show)
+        {
+            if (row == null || row.SlideState.IsVisible == show)
+            {
+                return;
+            }
+
+            // Before the first layout there is nothing on screen to slide.
+            if (BannerMaster.ActualSize.X > 0)
+            {
+                row.SlideState.IsVisible = show;
+            }
+            else if (show)
+            {
+                row.SlideState.Show();
+            }
+            else
+            {
+                row.SlideState.Collapse();
+            }
+        }
+
+        private float _bannerHeight;
+        private CompositionScopedBatch _bannerBatch;
+
+        // The list is placed under the panel by its margin, which moves at once, so it is slid
+        // from where it was to keep pace with the rows sliding in and out above it.
+        private void UpdateBannerHeight(bool animate)
+        {
+            var height = GetBannerHeight();
+            if (height == _bannerHeight)
+            {
+                return;
+            }
+
+            var diff = _bannerHeight - height;
+
+            _bannerHeight = height;
+            Stories.BannerHeight = height;
+
+            var visual = ElementComposition.GetElementVisual(ChatsList);
+
+            if (animate)
+            {
+                // While it slides down from above, its bottom stays put rather than open a gap.
+                ChatsList.Margin = new Thickness(0, Stories.TopPadding, 0, Math.Min(diff, 0));
+
+                var batch = visual.Compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
+
+                var offset = visual.Compositor.CreateScalarKeyFrameAnimation();
+                offset.InsertKeyFrame(0, diff);
+                offset.InsertKeyFrame(1, 0);
+                offset.Duration = Constants.FastAnimation;
+
+                visual.StartAnimation("Translation.Y", offset);
+
+                batch.End();
+                batch.Completed += BannerBatch_Completed;
+
+                _bannerBatch = batch;
+            }
+            else
+            {
+                _bannerBatch = null;
+
+                ChatsList.Margin = new Thickness(0, Stories.TopPadding, 0, 0);
+
+                visual.StopAnimation("Translation.Y");
+                visual.Properties.InsertVector3("Translation", Vector3.Zero);
+            }
+        }
+
+        private void BannerBatch_Completed(object sender, CompositionBatchCompletedEventArgs args)
+        {
+            var batch = sender as CompositionScopedBatch;
+            batch.Completed -= BannerBatch_Completed;
+
+            if (batch == _bannerBatch)
+            {
+                _bannerBatch = null;
+                ChatsList.Margin = new Thickness(0, Stories.TopPadding, 0, 0);
+            }
+        }
+
+        // Summed from the rows rather than read from the panel, which keeps measuring a row
+        // until it has finished sliding out.
+        private float GetBannerHeight()
+        {
+            var width = BannerMaster.ActualSize.X;
+            var height = 0d;
+
+            var children = BannerMaster.Children;
+
+            for (int i = 0; i < children.Count; i++)
+            {
+                var child = children[i];
+                if (child is ISlidePanelChild row && row.SlideState.IsVisible)
+                {
+                    // A row shown in this pass has not been measured yet.
+                    if (child.DesiredSize.Height == 0 && width > 0)
+                    {
+                        child.Measure(new Size(width, float.PositiveInfinity));
+                    }
+
+                    height += child.DesiredSize.Height;
+                }
+            }
+
+            return height > 0
+                ? (float)(height + BannerMaster.Margin.Top + BannerMaster.Margin.Bottom)
+                : 0;
+        }
+
+        private void BannerMaster_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            // A row's text rewraps when the width changes, and that is no reason to slide the list.
+            UpdateBannerHeight(e.PreviousSize.Width == e.NewSize.Width);
+        }
+
+        private void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MainViewModel.IsPrimaryFolderSelected))
+            {
+                UpdateBannerHints();
+            }
+        }
+
+        // Close birthdays are filtered to today by the local date, and TDLib sends nothing when
+        // the date turns, so the hints are picked again when the window comes back on a new day.
+        private void OnWindowActivated(object sender, Navigation.WindowActivatedEventArgs e)
+        {
+            if (e.IsActive && _bannerHintsDate != DateTime.Today)
+            {
+                UpdateBannerHints();
+            }
+        }
+
+        private void HintCard_Click(object sender, RoutedEventArgs e)
+        {
+            if (HintCard?.Hint is ChatListHint hint)
+            {
+                ViewModel.OpenChatListHint(hint);
+            }
+        }
+
+        private void HintCard_HideClick(object sender, RoutedEventArgs e)
+        {
+            if (HintCard?.Hint is ChatListHint hint)
+            {
+                ShowHideBannerRow(HintCard, false);
+                UpdateBannerHeight(true);
+
+                ViewModel.HideChatListHint(hint);
             }
         }
 
@@ -1174,118 +1352,6 @@ namespace Telegram.Views
             batch.End();
         }
 
-        private bool _playbackCollapsed = true;
-
-        private void ShowHidePlaybackMaster(bool show, bool animate)
-        {
-            if (_playbackCollapsed != show)
-            {
-                return;
-            }
-
-            _playbackCollapsed = !show;
-            FindName(nameof(PlaybackMaster));
-
-            Stories.BannerCollapsed = !show;
-            Stories.Banner = BannerMaster;
-            Stories.ControlledList = ChatsList;
-
-            void ShowHidePlaybackCompleted()
-            {
-                DialogsPanel.Margin = new Thickness();
-                ChatsList.Margin = new Thickness(0, Stories.TopPadding, 0, 0);
-                PlaybackMaster.Visibility = _playbackCollapsed
-                    ? Visibility.Collapsed
-                    : Visibility.Visible;
-            }
-
-            var element = VisualTreeHelper.GetChild(ChatsList, 0) as UIElement;
-            if (element == null || !animate)
-            {
-                // The animated hide ends on a transparent, clipped-away banner that only an
-                // animated show undoes. Stopped first: a value set under a running animation is dropped.
-                var banner = ElementComposition.GetElementVisual(BannerMaster);
-                banner.StopAnimation("Opacity");
-                banner.Opacity = 1;
-                banner.Clip = null;
-
-                var panel = ElementComposition.GetElementVisual(DialogsPanel);
-                panel.StopAnimation("Offset.Y");
-                panel.Offset = Vector3.Zero;
-
-                if (ChatTabsView != null)
-                {
-                    // Enabled first: StopAnimation throws for a property the visual does not have.
-                    ElementCompositionPreview.SetIsTranslationEnabled(ChatTabsView, true);
-
-                    var chatTabs = ElementComposition.GetElementVisual(ChatTabsView);
-                    chatTabs.StopAnimation("Translation.Y");
-                    chatTabs.Properties.InsertVector3("Translation", Vector3.Zero);
-                }
-
-                ShowHidePlaybackCompleted();
-                return;
-            }
-
-            var topPadding = Stories.GetTopPaddingBanner(false);
-
-            PlaybackMaster.Visibility = Visibility.Visible;
-            ChatsList.Margin = new Thickness(0, topPadding, 0, 0);
-            DialogsPanel.Margin = new Thickness(0, 0, 0, -40);
-
-            var visual = ElementComposition.GetElementVisual(DialogsPanel);
-            var header = ElementComposition.GetElementVisual(BannerMaster);
-            header.Clip = visual.Compositor.CreateInsetClip();
-
-            var batch = visual.Compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
-            batch.Completed += (s, args) =>
-            {
-                //header.Offset = new Vector3();
-                visual.Offset = new Vector3();
-
-                if (ChatTabsView != null)
-                {
-                    var chatTabs = ElementComposition.GetElementVisual(ChatTabsView);
-                    chatTabs.Properties.InsertVector3("Translation", Vector3.Zero);
-                }
-
-                ShowHidePlaybackCompleted();
-            };
-
-            var opacity = visual.Compositor.CreateScalarKeyFrameAnimation();
-            opacity.InsertKeyFrame(show ? 0 : 1, 0);
-            opacity.InsertKeyFrame(show ? 1 : 0, 1);
-            //opacity.Duration = Constants.FastAnimation;
-
-            var offset1 = visual.Compositor.CreateScalarKeyFrameAnimation();
-            offset1.InsertKeyFrame(show ? 0 : 1, -40);
-            offset1.InsertKeyFrame(show ? 1 : 0, 0);
-            //offset.Duration = Constants.FastAnimation;
-
-            var offset2 = visual.Compositor.CreateScalarKeyFrameAnimation();
-            offset2.InsertKeyFrame(show ? 0 : 1, 40);
-            offset2.InsertKeyFrame(show ? 1 : 0, 0);
-            //offset.Duration = Constants.FastAnimation;
-
-            header.StartAnimation("Opacity", opacity);
-            header.Clip.StartAnimation("TopInset", offset2);
-            visual.StartAnimation("Offset.Y", offset1);
-
-            if (ChatTabsView != null)
-            {
-                var chatTabs = ElementComposition.GetElementVisual(ChatTabsView);
-                ElementCompositionPreview.SetIsTranslationEnabled(ChatTabsView, true);
-
-                var offset3 = visual.Compositor.CreateScalarKeyFrameAnimation();
-                offset3.InsertKeyFrame(show ? 0 : 1, 40);
-                offset3.InsertKeyFrame(show ? 1 : 0, 0);
-
-                chatTabs.StartAnimation("Translation.Y", offset3);
-            }
-
-            batch.End();
-        }
-
         public void OnBackRequesting(BackRequestedRoutedEventArgs args)
         {
             if (!_searchCollapsed)
@@ -1461,10 +1527,14 @@ namespace Telegram.Views
 
             Subscribe();
 
+            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
             var context = WindowContext.ForXamlRoot(XamlRoot);
             if (context != null)
             {
                 context.CharacterReceived += OnCharacterReceived;
+                context.Activated += OnWindowActivated;
             }
 
             OnStateChanged(null, null);
@@ -1482,11 +1552,6 @@ namespace Telegram.Views
             Handle(new UpdateActiveCall());
             Handle(ViewModel.ClientService.FreezeState);
             UpdateChatFolders();
-
-            if (_clientService.HasSuggestedAction(new SuggestedActionSetBirthdate()))
-            {
-                FindName(nameof(SetBirthdateCard));
-            }
 
             if (_unloaded)
             {
@@ -1546,6 +1611,8 @@ namespace Telegram.Views
                 .Subscribe<UpdateConnectionState>(Handle)
                 .Subscribe<UpdateOption>(Handle)
                 .Subscribe<UpdateSuggestedActions>(Handle)
+                .Subscribe<UpdateContactCloseBirthdays>(Handle)
+                .Subscribe<UpdateUserFullInfo>(Handle)
                 .Subscribe<UpdateActiveCall>(Handle)
                 .Subscribe<UpdateChatFoldersLayout>(Handle)
                 .Subscribe<UpdateNavigationBar>(Handle)
@@ -1588,9 +1655,8 @@ namespace Telegram.Views
 
             MasterDetail.ShowHideBanner(detailVisible, animate);
 
-            // In Minimal the master header stays up while a page covers the list, so playback can
-            // start or stop under it: off screen, there is nothing to animate.
-            ShowHidePlaybackMaster(masterVisible, animate && minimal && blank);
+            ShowHideBannerRow(PlaybackMaster, masterVisible);
+            UpdateBannerHeight(BannerMaster.ActualSize.X > 0);
         }
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -1599,7 +1665,10 @@ namespace Telegram.Views
             if (context != null)
             {
                 context.CharacterReceived -= OnCharacterReceived;
+                context.Activated -= OnWindowActivated;
             }
+
+            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
             Bindings.StopTracking();
 
@@ -2187,6 +2256,7 @@ namespace Telegram.Views
 
             UpdatePaneToggleButtonVisibility();
             UpdatePlaybackVisibility();
+            UpdateBannerHints();
 
             ChatsList.UpdateViewState(MasterDetail.CurrentState);
 
@@ -2337,15 +2407,6 @@ namespace Telegram.Views
             BackButton.Visibility = _backButtonCollapsed
                 ? Visibility.Collapsed
                 : Visibility.Visible;
-        }
-
-        private Visibility UpdateScrollingHostHeaderVisibility(MasterDetailState state, bool primaryFolderSelected)
-        {
-            return state == MasterDetailState.Compact
-                ? Visibility.Collapsed
-                : primaryFolderSelected
-                ? Visibility.Visible
-                : Visibility.Collapsed;
         }
 
         private void UpdateListViewsSelectedItem(ChatMessageTopic openChat, bool fromSelection = false)
@@ -4519,7 +4580,7 @@ namespace Telegram.Views
             ArchivedChatsPresenter = null;
             ArchivedChatsPanel = null;
             ArchivedChats = null;
-            SetBirthdateCard = null;
+            HintCard = null;
             UnconfirmedCard = null;
             ChatTabs = null;
             ChatTabsView = null;

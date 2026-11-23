@@ -6889,6 +6889,8 @@
     <string name="BoostingReassignBoostTextPluralWithLink_one">To boost **{1}**, reassign a previous boost or {2} to a friend to get **{0}** additional boost.</string>
     <string name="BoostingReassignBoostTextPluralWithLink_other">To boost **{1}**, reassign a previous boost or {2} to a friend to get **{0}** additional boosts.</string>
     <string name="BoostingReassignBoostTextLink">**gift Telegram Premium**</string>
+    <string name="BoostingPremiumChristmasSubTitle">Send limited-edition collectibles to friends!</string>
+    <string name="BoostingPremiumChristmasToast">You can send gifts to friends later from Settings</string>
 
 
 
@@ -7652,6 +7654,11 @@
     <string name="BirthdaySetupTitle">Add your birthday! &#127874;</string>
     <string name="BirthdaySetupMessage">Let your contacts know when to celebrate.</string>
     <string name="BirthdaySetupLater">You can always set your birthday in profile settings.</string>
+    <string name="BirthdayTodaySingleTitle">It’s {0}’s **birthday** today! &#127874;</string>
+    <string name="BirthdayTodaySingleMessage2">Send them a Gift.</string>
+    <string name="BirthdayTodayMultipleTitle_one"></string>
+    <string name="BirthdayTodayMultipleTitle_other">{0} contacts have **birthdays** today! &#127874;</string>
+    <string name="BirthdayTodayMultipleMessage2">Send them a Gift.</string>
 
 
 
@@ -7706,6 +7713,8 @@
     <string name="ShowAdsTitle">Ads in Channels</string>
     <string name="ShowAds">Do Not Hide Ads</string>
     <string name="ShowAdsInfo">As a Premium subscriber, you don’t see any ads on Telegram, but you can turn them on, for example, to view your own ads that you launched on the **Telegram Ad Platform &gt;**</string>
+    <string name="GraceTitle">&#9888;&#65039; Your Premium subscription is expiring!</string>
+    <string name="GraceMessage">Don’t lose access to exclusive features.</string>
 
 
 
@@ -11576,6 +11585,7 @@
 
     <string name="GiftPremiumAboutThisLink">This link allows you or **anyone you choose** to activate a {0}.</string>
     <string name="GiftPremiumAboutThisLinkEnd">**Telegram Premium** subscription</string>
+    <string name="GiftPremiumEventAdsTitle">&#128081; Snoop Dogg Gift Drop &#127873;</string>
     <string name="GiftPremiumActivateErrorText">You can activate this gift code after {0} or **send the link** to a friend.</string>
     <string name="GiftPremiumActivateErrorTitle">You already have Telegram Premium</string>
     <string name="GiftPremiumActivateForFree">Activate For Free</string>
@@ -11888,6 +11898,8 @@
     <string name="LeaveAffiliateLinkButton">Leave</string>
 
     <string name="AffiliateLinkExpiredText">This link was part of an affiliate program that has been terminated by the app owner.</string>
+    <string name="HintAddYourPhoto">Add your photo! &#128248;</string>
+    <string name="HintAddYourPhotoText">Help your friends spot you easily.</string>
     <string name="AffiliateLinkExpiredTitle">Link expired</string>
 
     <string name="StarsTransactionUnknown">Unknown User</string>
@@ -13490,6 +13502,8 @@
     <string name="DateYear">Year</string>
     <string name="PrivacyBirthdaySetDone">Birthday added.</string>
     <string name="PrivacyBirthdaySetDoneInfo">You can change your birthday in Settings.</string>
+    <string name="PrivacyBirthdayTooOftenTitle">Oops</string>
+    <string name="PrivacyBirthdayTooOftenMessage">Sorry, you can’t change your birthday so often.</string>
 
     <string name="UserColorApply">Apply Style</string>
     <string name="UserColorApplyCollectible">Wear Collectible</string>

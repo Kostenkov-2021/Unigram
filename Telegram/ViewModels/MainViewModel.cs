@@ -39,8 +39,9 @@ namespace Telegram.ViewModels
         private readonly IVoipService _voipService;
         private readonly ICloudUpdateService _cloudUpdateService;
         private readonly IShortcutsService _shortcutService;
+        private readonly IProfilePhotoService _profilePhotoService;
 
-        public MainViewModel(IClientService clientService, ISettingsService settingsService, IStorageService storageService, IEventAggregator aggregator, INotificationsService pushService, IContactsService contactsService, IPasscodeService passcodeService, IVoipService voipService, ISettingsSearchService settingsSearchService, ICloudUpdateService cloudUpdateService, IShortcutsService shortcutService)
+        public MainViewModel(IClientService clientService, ISettingsService settingsService, IStorageService storageService, IEventAggregator aggregator, INotificationsService pushService, IContactsService contactsService, IPasscodeService passcodeService, IVoipService voipService, ISettingsSearchService settingsSearchService, ICloudUpdateService cloudUpdateService, IShortcutsService shortcutService, IProfilePhotoService profilePhotoService)
             : base(clientService, settingsService, aggregator)
         {
             _contactsService = contactsService;
@@ -48,6 +49,7 @@ namespace Telegram.ViewModels
             _voipService = voipService;
             _cloudUpdateService = cloudUpdateService;
             _shortcutService = shortcutService;
+            _profilePhotoService = profilePhotoService;
 
             Folders = new ChatFolderCollection();
 
@@ -489,42 +491,6 @@ namespace Telegram.ViewModels
         public void UnfreezeAccount()
         {
             ShowPopup(new FrozenPopup(ClientService.FreezeState));
-        }
-
-        public async void SetBirthdate()
-        {
-            async Task<UserPrivacySettingRule> GetPrimaryRuleAsync()
-            {
-                var response = await ClientService.SendAsync(new GetUserPrivacySettingRules(new UserPrivacySettingShowBirthdate()));
-                if (response is UserPrivacySettingRules rules)
-                {
-                    foreach (var rule in rules.Rules)
-                    {
-                        return rule;
-                    }
-                }
-
-                return null;
-            }
-
-            var rule = await GetPrimaryRuleAsync();
-            var popup = new SettingsBirthdatePopup(date: null, rule);
-
-            var confirm = await ShowPopupAsync(popup);
-            if (confirm == ContentDialogResult.Primary)
-            {
-                ClientService.Send(new SetBirthdate(popup.Value));
-                ShowToast(Strings.PrivacyBirthdaySetDone, ToastPopupIcon.Success);
-            }
-            else if (popup.ShowPrivacySettings)
-            {
-                NavigationService.Navigate(typeof(SettingsPrivacyShowBirthdatePage));
-            }
-        }
-
-        public void HideBirthdate()
-        {
-            ClientService.Send(new HideSuggestedAction(new SuggestedActionSetBirthdate()));
         }
 
         public async void UpdateApp()

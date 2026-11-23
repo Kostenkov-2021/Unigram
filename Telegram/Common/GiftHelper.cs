@@ -6,14 +6,20 @@
 //
 
 using System;
+using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using Telegram.Collections;
+using Telegram.Controls.Cells;
 using Telegram.Converters;
+using Telegram.Navigation;
 using Telegram.Navigation.Services;
 using Telegram.Services;
 using Telegram.Td.Api;
 using Telegram.Views.Popups;
+using Telegram.Views.Premium.Popups;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
 namespace Telegram.Common
@@ -92,6 +98,88 @@ namespace Telegram.Common
             }
 
             return TransferGiftPopup.FormatGram(parameters.GramCentCount);
+        }
+
+        /// <summary>
+        /// Picks whom to send a gift to, the current user included, and opens the gift popup for them.
+        /// </summary>
+        public static async void ChooseRecipient(IClientService clientService, INavigationService navigationService)
+        {
+            var popup = ChooseChatsPopup.Create(navigationService, Strings.GiftTelegramPremiumOrStarsTitle);
+
+            if (clientService.TryGetUser(clientService.Options.MyId, out User self))
+            {
+                var selfChat = await clientService.SendAsync(new CreatePrivateChat(self.Id, false)) as Chat;
+
+                var profile = new ProfileCell();
+                profile.UpdateUser(clientService, self, 36, true);
+                profile.Subtitle = Strings.Gift2Myself;
+
+                var button = new Button
+                {
+                    Content = profile,
+                    Style = BootStrapper.Current.Resources["ListEmptyButtonStyle"] as Style,
+                    Margin = new Thickness(12, 0, 12, 0),
+                    CornerRadius = new CornerRadius(4)
+                };
+
+                button.Click += new SelfRecipient(popup, selfChat).OnClick;
+                popup.Header = button;
+            }
+
+            var options = new ChooseChatsOptions()
+            {
+                AllowChannelChats = false,
+                AllowGroupChats = false,
+                AllowBotChats = false,
+                AllowUserChats = true,
+                AllowSecretChats = false,
+                AllowSelf = false,
+                CanPostMessages = false,
+                CanInviteUsers = false,
+                CanShareContact = false,
+                Mode = ChooseChatsMode.Chats,
+                ShowMessages = false
+            };
+
+            var confirm = await popup.PickAsync(navigationService.XamlRoot, Array.Empty<long>(), options, ListViewSelectionMode.None);
+            if (confirm != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            var chat = popup.ViewModel.SelectedItems.FirstOrDefault();
+            var user = clientService.GetUser(chat);
+
+            if (user != null)
+            {
+                clientService.TryGetUserFull(user.Id, out UserFullInfo fullInfo);
+                fullInfo ??= await clientService.SendAsync(new GetUserFullInfo(user.Id)) as UserFullInfo;
+
+                if (fullInfo != null)
+                {
+                    navigationService.ShowPopup(new GiftPopup(clientService, navigationService, user, fullInfo));
+                }
+            }
+        }
+
+        // The button lives inside the popup and dies with it, so the handler needs no detaching.
+        private sealed class SelfRecipient
+        {
+            private readonly ChooseChatsPopup _popup;
+            private readonly Chat _chat;
+
+            public SelfRecipient(ChooseChatsPopup popup, Chat chat)
+            {
+                _popup = popup;
+                _chat = chat;
+            }
+
+            public void OnClick(object sender, RoutedEventArgs e)
+            {
+                _popup.ViewModel.SelectedItems = new RangeObservableCollection<Chat> { _chat };
+                _popup.Hide(ContentDialogResult.Primary);
+            }
         }
 
         /// <summary>

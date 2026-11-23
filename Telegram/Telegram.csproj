@@ -673,8 +673,8 @@
     <Compile Include="Controls\Stories\Widgets\StoryWeatherWidget.xaml.cs">
       <DependentUpon>StoryWeatherWidget.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\SuggestedActionSetBirthdateCard.xaml.cs">
-      <DependentUpon>SuggestedActionSetBirthdateCard.xaml</DependentUpon>
+    <Compile Include="Controls\ChatListHintCard.xaml.cs">
+      <DependentUpon>ChatListHintCard.xaml</DependentUpon>
     </Compile>
     <Compile Include="Controls\TabbedPageHeader.xaml.cs">
       <DependentUpon>TabbedPageHeader.xaml</DependentUpon>
@@ -2615,6 +2615,7 @@
     <Compile Include="ViewModels\DialogViewModel.Messages.cs" />
     <Compile Include="ViewModels\DialogViewModel.Footer.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
+    <Compile Include="ViewModels\MainViewModel.ChatListHint.cs" />
     <Compile Include="ViewModels\SettingsViewModel.cs" />
     <Compile Include="ViewModels\Settings\SettingsSessionsViewModel.cs" />
     <Compile Include="ViewModels\Settings\SettingsStorageViewModel.cs" />
@@ -3849,7 +3850,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Controls\SuggestedActionSetBirthdateCard.xaml">
+    <Page Include="Controls\ChatListHintCard.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -503,7 +503,10 @@ namespace Telegram.Controls.Stories
 
         public bool TabsTopCollapsed { get; set; } = true;
 
-        public bool BannerCollapsed { get; set; } = true;
+        /// <summary>
+        /// The height of the panel above the chat list, 0 when it holds nothing.
+        /// </summary>
+        public double BannerHeight { get; set; }
 
         private ListView _controlledList;
         public ListView ControlledList
@@ -518,7 +521,7 @@ namespace Telegram.Controls.Stories
             {
                 var title = 40;
                 var search = 32;
-                var padding = 4 + (TabsTopCollapsed || !TabsLeftCollapsed ? 0 : 36) + (BannerCollapsed ? 0 : 40);
+                var padding = GetPadding(!TabsTopCollapsed && TabsLeftCollapsed);
                 //var padding = 8 + (ChatTabs == null || ChatTabs.Visibility == Visibility.Collapsed || !TabsLeftCollapsed ? 0 : 32);
                 //var padding = ChatTabs == null || ChatTabs.Visibility == Visibility.Collapsed || !TabsLeftCollapsed ? 0 : 40;
 
@@ -526,22 +529,19 @@ namespace Telegram.Controls.Stories
             }
         }
 
+        // The 4 under the search box is inside the tabs' 40 and is the banner's own top margin,
+        // so it stands on its own only when neither is there.
+        private double GetPadding(bool tabs)
+        {
+            var padding = (tabs ? 40 : 0) + BannerHeight;
+            return padding > 0 ? padding : 4;
+        }
+
         public double GetTopPadding(bool collapsed)
         {
             var title = 40;
             var search = 32;
-            var padding = 4 + (collapsed /*|| !TabsLeftCollapsed*/ ? 0 : 36) + (BannerCollapsed ? 0 : 40);
-            //var padding = 8 + (ChatTabs == null || ChatTabs.Visibility == Visibility.Collapsed || !TabsLeftCollapsed ? 0 : 32);
-            //var padding = ChatTabs == null || ChatTabs.Visibility == Visibility.Collapsed || !TabsLeftCollapsed ? 0 : 40;
-
-            return title + search + padding;
-        }
-
-        public double GetTopPaddingBanner(bool collapsed)
-        {
-            var title = 40;
-            var search = 32;
-            var padding = 4 + (TabsTopCollapsed || !TabsLeftCollapsed ? 0 : 36) + (collapsed ? 0 : 40);
+            var padding = GetPadding(!collapsed /*&& TabsLeftCollapsed*/);
             //var padding = 8 + (ChatTabs == null || ChatTabs.Visibility == Visibility.Collapsed || !TabsLeftCollapsed ? 0 : 32);
             //var padding = ChatTabs == null || ChatTabs.Visibility == Visibility.Collapsed || !TabsLeftCollapsed ? 0 : 40;
 
