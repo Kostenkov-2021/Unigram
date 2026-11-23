@@ -111,7 +111,7 @@ namespace Telegram.Views.Gifts.Popups
             Title = upgraded.Gift.Title;
             //Subtitle.Text = Locale.Declension(Strings.R.Gift2ResaleCount, valueInfo.TelegramListedGiftCount);
 
-            _gifts = new ResoldGiftsCollection(clientService, this, upgraded.Gift.RegularGiftId);
+            _gifts = new ResoldGiftsCollection(clientService, this, upgraded.Gift.RegularGiftId, GiftResaleCurrencies.ForCrafting());
             ScrollingHost.ItemsSource = _gifts;
 
             ScrollingHost2.ItemsSource = new GiftsForCraftingCollection(clientService, upgraded.Gift.RegularGiftId, crafting);
@@ -322,7 +322,7 @@ namespace Telegram.Views.Gifts.Popups
 
         public void UpdateItems(GiftForResaleOrder order, Vector<UpgradedGiftAttributeId> attributes)
         {
-            _gifts = new ResoldGiftsCollection(_clientService, this, _giftId, order, attributes);
+            _gifts = new ResoldGiftsCollection(_clientService, this, _giftId, order, attributes, GiftResaleCurrencies.ForCrafting());
             ScrollingHost.ItemsSource = _gifts;
             ShowHideSkeleton();
         }

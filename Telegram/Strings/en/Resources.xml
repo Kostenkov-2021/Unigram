@@ -12426,6 +12426,10 @@
     <string name="ResellGiftFilterSortPrice">Sort by Price</string>
     <string name="ResellGiftFilterSortDate">Sort by Date</string>
     <string name="ResellGiftFilterSortNumber">Sort by Number</string>
+    <string name="GiftResaleFilterForTon">For Grams</string>
+    <string name="GiftResaleFilterForStars">For Stars</string>
+    <string name="GiftResaleFilterFromFragment">From Fragment</string>
+    <string name="GiftResaleStarsOnly">Show listings for Stars only</string>
     <string name="Gift2ResaleFiltersSearch">Search…</string>
     <string name="ResellGiftBuy_one">Buy for &#11088;&#65039;{0}</string>
     <string name="ResellGiftBuy_other">Buy for &#11088;&#65039;{0}</string>
