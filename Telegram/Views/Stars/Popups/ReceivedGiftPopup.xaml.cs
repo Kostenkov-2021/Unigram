@@ -714,7 +714,7 @@ namespace Telegram.Views.Stars.Popups
 
             if (gift.ResaleParameters != null)
             {
-                UpdateResalePrice(gift.ResaleParameters);
+                UpdateResalePrice(gift);
             }
 
             PrimaryButtonText = GetUpgradedPrimaryButtonText(gift);
@@ -737,8 +737,8 @@ namespace Telegram.Views.Stars.Popups
         {
             // Opened from a link, the current user's own gift arrives without a received gift identifier.
             return gift.ResaleParameters != null && !_owned
-                ? gift.ResaleParameters.GramOnly
-                    ? string.Format(Strings.ResellGiftBuyTON, TransferGiftPopup.FormatGram(gift.ResaleParameters.GramCentCount)).ReplaceStar(Icons.Gram14)
+                ? GiftHelper.IsResaleInGrams(gift)
+                    ? string.Format(Strings.ResellGiftBuyTON, GiftHelper.FormatResaleGrams(gift, true)).ReplaceStar(Icons.Gram14)
                     : Locale.Declension(Strings.R.ResellGiftBuy, gift.ResaleParameters.StarCount).ReplaceStar(Icons.Premium)
                 : _nextUpgrade != null
                 ? Strings.Gift2UpgradeNext
@@ -1768,7 +1768,7 @@ namespace Telegram.Views.Stars.Popups
 
         private async void Resell()
         {
-            if (_gift.Gift is not SentGiftUpgraded upgraded)
+            if (_gift.Gift is not SentGiftUpgraded upgraded || !TransferGiftPopup.CheckOnChainResale(_navigationService, upgraded.Gift))
             {
                 return;
             }
@@ -1826,7 +1826,7 @@ namespace Telegram.Views.Stars.Popups
 
         private async void ChangePrice()
         {
-            if (_gift.Gift is not SentGiftUpgraded upgraded)
+            if (_gift.Gift is not SentGiftUpgraded upgraded || !TransferGiftPopup.CheckOnChainResale(_navigationService, upgraded.Gift))
             {
                 return;
             }
@@ -1862,7 +1862,7 @@ namespace Telegram.Views.Stars.Popups
 
                 _aggregator.Publish(new UpdateGiftUpgraded(_gift.ReceivedGiftId, _gift.ReceivedGiftId, _gift));
 
-                UpdateResalePrice(upgraded.Gift.ResaleParameters);
+                UpdateResalePrice(upgraded.Gift);
                 UpdateVisibility(true);
 
                 ResellButton.Glyph = Icons.TagOffFilled;
@@ -1887,12 +1887,12 @@ namespace Telegram.Views.Stars.Popups
             }
         }
 
-        private void UpdateResalePrice(GiftResaleParameters parameters)
+        private void UpdateResalePrice(UpgradedGift gift)
         {
             // The glyphs are drawn for Segoe UI's baseline, so they go inline rather than beside the text.
-            ResaleStarCount.Text = string.Format(Strings.GiftOnSale, parameters.GramOnly
-                ? Icons.Gram14 + " " + TransferGiftPopup.FormatGram(parameters.GramCentCount)
-                : Icons.Star14 + " " + parameters.StarCount.ToString("N0"));
+            ResaleStarCount.Text = string.Format(Strings.GiftOnSale, GiftHelper.IsResaleInGrams(gift)
+                ? Icons.Gram14 + " " + GiftHelper.FormatResaleGrams(gift, true)
+                : Icons.Star14 + " " + gift.ResaleParameters.StarCount.ToString("N0"));
         }
 
         private void ShowResalePrice(bool show, bool animate)
@@ -2024,6 +2024,12 @@ namespace Telegram.Views.Stars.Popups
                 return;
             }
 
+            if (!TransferGiftPopup.CheckOnChainResale(_navigationService, upgraded.Gift))
+            {
+                _submitted = false;
+                return;
+            }
+
             var chat = await _clientService.GetChatFromMessageSenderAsync(_sendGiftTo);
 
             var text = string.Empty.AsFormattedText();
@@ -2067,7 +2073,7 @@ namespace Telegram.Views.Stars.Popups
 
             // A raised price was confirmed or declined in the loop, and the sheet has to show it either way.
             PrimaryButtonText = GetUpgradedPrimaryButtonText(upgraded.Gift);
-            UpdateResalePrice(upgraded.Gift.ResaleParameters);
+            UpdateResalePrice(upgraded.Gift);
 
             if (response is Error error)
             {

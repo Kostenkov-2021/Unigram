@@ -295,6 +295,10 @@
             <service:MessageUpgradedGiftPurchaseOfferContent />
         </DataTemplate>
 
+        <DataTemplate x:Name="ServiceMessageUpgradedGiftOnChainPurchaseOfferTemplate">
+            <service:MessageUpgradedGiftOnChainPurchaseOfferContent />
+        </DataTemplate>
+
         <DataTemplate x:Name="ServiceMessageChatHasProtectedContentDisableRequestedTemplate">
             <service:MessageChatHasProtectedContentDisableRequestedContent />
         </DataTemplate>

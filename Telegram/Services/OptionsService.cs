@@ -165,8 +165,44 @@ namespace Telegram.Services
         /// <summary>
         /// TBD
         /// </summary>
-        /// <value>can_craft_from_withdrawn_first_gift</value>
-        bool CanCraftFromWithdrawnFirstGift { get; }
+        /// <value>can_craft_with_minted_first_gift</value>
+        bool CanCraftWithMintedFirstGift { get; }
+
+        /// <summary>
+        /// Since TDLib 1.8.71. If true, gifts sold on-chain at a fixed price can be bought
+        /// </summary>
+        /// <value>can_buy_on_chain_fixed_price_gifts</value>
+        bool CanBuyOnChainFixedPriceGifts { get; }
+
+        /// <summary>
+        /// Since TDLib 1.8.71. If true, gifts sold on-chain on Fragment can be bought
+        /// </summary>
+        /// <value>can_buy_on_chain_gifts</value>
+        bool CanBuyOnChainGifts { get; }
+
+        /// <summary>
+        /// Since TDLib 1.8.71. If true, the Grams filter of the gift resale market is selected by default
+        /// </summary>
+        /// <value>select_gift_resale_gram_filter_by_default</value>
+        bool SelectGiftResaleGramFilterByDefault { get; }
+
+        /// <summary>
+        /// Since TDLib 1.8.71. If true, the Stars filter of the gift resale market is selected by default
+        /// </summary>
+        /// <value>select_gift_resale_star_filter_by_default</value>
+        bool SelectGiftResaleStarFilterByDefault { get; }
+
+        /// <summary>
+        /// Since TDLib 1.8.71. If true, the gift resale market shows a filter for gifts bought with Grams
+        /// </summary>
+        /// <value>show_gift_resale_gram_filter</value>
+        bool ShowGiftResaleGramFilter { get; }
+
+        /// <summary>
+        /// Since TDLib 1.8.71. If true, the gift resale market shows a filter for gifts bought with Stars
+        /// </summary>
+        /// <value>show_gift_resale_star_filter</value>
+        bool ShowGiftResaleStarFilter { get; }
 
         /// <summary>
         /// Since TDLib 1.8.46. If true, the user can enable paid messages
@@ -1260,8 +1296,26 @@ namespace Telegram.Services
                 case "can_archive_and_mute_new_chats_from_unknown_users":
                     _canArchiveAndMuteNewChatsFromUnknownUsers = GetValue<bool>(value);
                     break;
-                case "can_craft_from_withdrawn_first_gift":
-                    _canCraftFromWithdrawnFirstGift = GetValue<bool>(value);
+                case "can_craft_with_minted_first_gift":
+                    _canCraftWithMintedFirstGift = GetValue<bool>(value);
+                    break;
+                case "can_buy_on_chain_fixed_price_gifts":
+                    _canBuyOnChainFixedPriceGifts = GetValue<bool>(value);
+                    break;
+                case "can_buy_on_chain_gifts":
+                    _canBuyOnChainGifts = GetValue<bool>(value);
+                    break;
+                case "select_gift_resale_gram_filter_by_default":
+                    _selectGiftResaleGramFilterByDefault = GetValue<bool>(value);
+                    break;
+                case "select_gift_resale_star_filter_by_default":
+                    _selectGiftResaleStarFilterByDefault = GetValue<bool>(value);
+                    break;
+                case "show_gift_resale_gram_filter":
+                    _showGiftResaleGramFilter = GetValue<bool>(value);
+                    break;
+                case "show_gift_resale_star_filter":
+                    _showGiftResaleStarFilter = GetValue<bool>(value);
                     break;
                 case "can_enable_paid_messages":
                     _canEnablePaidMessages = GetValue<bool>(value);
@@ -1934,8 +1988,26 @@ namespace Telegram.Services
         private bool _canArchiveAndMuteNewChatsFromUnknownUsers;
         public bool CanArchiveAndMuteNewChatsFromUnknownUsers => _canArchiveAndMuteNewChatsFromUnknownUsers;
 
-        private bool _canCraftFromWithdrawnFirstGift;
-        public bool CanCraftFromWithdrawnFirstGift => _canCraftFromWithdrawnFirstGift;
+        private bool _canCraftWithMintedFirstGift;
+        public bool CanCraftWithMintedFirstGift => _canCraftWithMintedFirstGift;
+
+        private bool _canBuyOnChainFixedPriceGifts;
+        public bool CanBuyOnChainFixedPriceGifts => _canBuyOnChainFixedPriceGifts;
+
+        private bool _canBuyOnChainGifts;
+        public bool CanBuyOnChainGifts => _canBuyOnChainGifts;
+
+        private bool _selectGiftResaleGramFilterByDefault;
+        public bool SelectGiftResaleGramFilterByDefault => _selectGiftResaleGramFilterByDefault;
+
+        private bool _selectGiftResaleStarFilterByDefault;
+        public bool SelectGiftResaleStarFilterByDefault => _selectGiftResaleStarFilterByDefault;
+
+        private bool _showGiftResaleGramFilter;
+        public bool ShowGiftResaleGramFilter => _showGiftResaleGramFilter;
+
+        private bool _showGiftResaleStarFilter;
+        public bool ShowGiftResaleStarFilter => _showGiftResaleStarFilter;
 
         private bool _canEnablePaidMessages;
         public bool CanEnablePaidMessages => _canEnablePaidMessages;
@@ -2719,7 +2791,13 @@ namespace Telegram.Services
             public const string CallPacketTimeoutMs = "call_packet_timeout_ms";
             public const string CanAcceptCalls = "can_accept_calls";
             public const string CanArchiveAndMuteNewChatsFromUnknownUsers = "can_archive_and_mute_new_chats_from_unknown_users";
-            public const string CanCraftFromWithdrawnFirstGift = "can_craft_from_withdrawn_first_gift";
+            public const string CanCraftWithMintedFirstGift = "can_craft_with_minted_first_gift";
+            public const string CanBuyOnChainFixedPriceGifts = "can_buy_on_chain_fixed_price_gifts";
+            public const string CanBuyOnChainGifts = "can_buy_on_chain_gifts";
+            public const string SelectGiftResaleGramFilterByDefault = "select_gift_resale_gram_filter_by_default";
+            public const string SelectGiftResaleStarFilterByDefault = "select_gift_resale_star_filter_by_default";
+            public const string ShowGiftResaleGramFilter = "show_gift_resale_gram_filter";
+            public const string ShowGiftResaleStarFilter = "show_gift_resale_star_filter";
             public const string CanEnablePaidMessages = "can_enable_paid_messages";
             public const string CanGiftStars = "can_gift_stars";
             public const string CanIgnoreSensitiveContentRestrictions = "can_ignore_sensitive_content_restrictions";

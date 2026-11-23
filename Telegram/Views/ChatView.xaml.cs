@@ -164,6 +164,7 @@ namespace Telegram.Views
             AddStrategy(ChatHistoryViewItemType.ServiceGift, ServiceMessageGiftTemplate);
             AddStrategy(ChatHistoryViewItemType.ServiceUpgradedGift, ServiceMessageUpgradedGiftTemplate);
             AddStrategy(ChatHistoryViewItemType.ServiceUpgradedGiftPurchaseOffer, ServiceMessageUpgradedGiftPurchaseOfferTemplate);
+            AddStrategy(ChatHistoryViewItemType.ServiceUpgradedGiftOnChainPurchaseOffer, ServiceMessageUpgradedGiftOnChainPurchaseOfferTemplate);
             AddStrategy(ChatHistoryViewItemType.ServiceChatHasProtectedContentDisableRequested, ServiceMessageChatHasProtectedContentDisableRequestedTemplate);
             AddStrategy(ChatHistoryViewItemType.ServiceMessageTonWalletTransfer, ServiceMessageTonWalletTransferTemplate);
             AddStrategy(ChatHistoryViewItemType.ServiceAccountInfo, ServiceMessageAccountInfoTemplate);
@@ -3728,6 +3729,8 @@ namespace Telegram.Views
                 flyout.CreateFlyoutItem(MessageSendNow_Loaded, ViewModel.SendNowMessage, message, Strings.MessageScheduleSend, Icons.Send);
                 flyout.CreateFlyoutItem(MessageReschedule_Loaded, ViewModel.RescheduleMessage, message, Strings.MessageScheduleEditTime, Icons.CalendarClock);
 
+                flyout.CreateFlyoutItem(MessageDeclineGiftOffer_Loaded, ViewModel.DeclineGiftOnChainPurchaseOffer, message, Strings.GiftOnchainOfferDeclineTitle, Icons.DismissCircle);
+
                 var bot = false;
                 if (message.ClientService.TryGetUser(message.SenderId, out User senderUser))
                 {
@@ -4802,6 +4805,12 @@ namespace Telegram.Views
                 // Should be hidden in this case, but hiding breaks the animation.
                 placeholder.Text = Strings.PmReadUnknown;
             }
+        }
+
+        private bool MessageDeclineGiftOffer_Loaded(MessageViewModel message)
+        {
+            return message.Content is MessageUpgradedGiftOnChainPurchaseOffer { IsBuyer: false, OfferMessageId: 0, State: GiftOnChainPurchaseOfferStatePending } offer
+                && offer.ExpirationDate > DateTime.Now.ToUnixTimeSeconds();
         }
 
         private bool MessageSendNow_Loaded(MessageViewModel message)

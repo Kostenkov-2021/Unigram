@@ -184,6 +184,11 @@ namespace Telegram.Views.Popups
         /// </summary>
         public static async Task<Object> BuyAsync(IClientService clientService, INavigationService navigationService, UpgradedGift gift, Chat chat, MessageSender ownerId, FormattedText text, bool isPrivate)
         {
+            if (!CheckOnChainResale(navigationService, gift))
+            {
+                return null;
+            }
+
             var gram = gift.ResaleParameters.GramOnly;
 
             while (true)
@@ -232,6 +237,27 @@ namespace Telegram.Views.Popups
 
                 return response;
             }
+        }
+
+        /// <summary>
+        /// False, after saying so, when the gift is bought, listed and delisted on-chain: TDLib hands
+        /// back wallet messages to sign instead of selling it itself.
+        /// </summary>
+        // TODO: buy, list and delist with getGiftOnChain{Purchase,Listing,Delisting}Transaction and
+        // sendTonWalletTransaction once the wallet engine can sign TDLib's messages unchanged.
+        public static bool CheckOnChainResale(INavigationService navigationService, UpgradedGift gift)
+        {
+            if (!gift.UsesOnChainResale)
+            {
+                return true;
+            }
+
+            var title = gift.ResaleParameters is { IsFixedOnChain: true }
+                ? Strings.GiftOnchainErrorTitleFixed
+                : Strings.GiftOnchainErrorTitle;
+
+            navigationService.ShowPopup(Strings.GiftOnchainErrorUnsupported, title, Strings.OK);
+            return false;
         }
 
         /// <summary>

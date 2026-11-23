@@ -6,8 +6,10 @@
 //
 
 using System;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using Telegram.Converters;
 using Telegram.Navigation.Services;
 using Telegram.Services;
 using Telegram.Td.Api;
@@ -18,6 +20,80 @@ namespace Telegram.Common
 {
     public static class GiftHelper
     {
+        private const long NanogramsPerGram = 1_000_000_000;
+
+        private static readonly BigInteger UnitsPerCent = BigInteger.Pow(10, WalletHelper.CurrencyDecimals - 2);
+
+        /// <summary>
+        /// An on-chain amount as the gift market writes it, without its unit: whole Grams grouped,
+        /// two decimals otherwise, and four below a hundredth so that a small amount doesn't read as 0.
+        /// </summary>
+        public static string FormatGramValue(long nanograms)
+        {
+            if (nanograms % NanogramsPerGram == 0)
+            {
+                return (nanograms / NanogramsPerGram).ToString("N0");
+            }
+
+            var grams = nanograms / (double)NanogramsPerGram;
+            return grams.ToString(Math.Abs(grams) >= 0.01 ? "0.##" : "0.####");
+        }
+
+        /// <summary>
+        /// The same with its unit, "12 Gram", held together so that it never wraps inside a sentence.
+        /// </summary>
+        public static string FormatGrams(long nanograms)
+        {
+            return NoBreak(string.Format(Strings.GiftOnchainGramAmount, FormatGramValue(nanograms)));
+        }
+
+        public static string NoBreak(string text)
+        {
+            return text.Replace(' ', ' ');
+        }
+
+        /// <summary>
+        /// "~$12.34", rounded to the cent; null while there is no rate or when it is worth no cent.
+        /// </summary>
+        public static string FormatUsd(IClientService clientService, long nanograms)
+        {
+            if (!WalletHelper.TryToUsd(clientService, nanograms, out var units))
+            {
+                return null;
+            }
+
+            var cents = (long)((units + UnitsPerCent / 2) / UnitsPerCent);
+            return cents > 0
+                ? "~" + Formatter.FormatAmount(cents, "USD")
+                : null;
+        }
+
+        /// <summary>
+        /// True when the gift's resale price is shown in Grams: an on-chain sale takes nothing else.
+        /// </summary>
+        public static bool IsResaleInGrams(UpgradedGift gift)
+        {
+            return gift.ResaleParameters is GiftResaleParameters parameters && (parameters.GramOnly || gift.UsesOnChainResale);
+        }
+
+        /// <summary>
+        /// The resale price in Grams, without its unit. On-chain the nanograms are what the buyer
+        /// signs for, so <paramref name="exact"/> writes every digit of them; off-chain the price is
+        /// only ever whole cents.
+        /// </summary>
+        public static string FormatResaleGrams(UpgradedGift gift, bool exact)
+        {
+            var parameters = gift.ResaleParameters;
+            if (gift.UsesOnChainResale && parameters.GramAmount > 0)
+            {
+                return exact
+                    ? Formatter.GramExact(parameters.GramAmount).Join()
+                    : FormatGramValue(parameters.GramAmount);
+            }
+
+            return TransferGiftPopup.FormatGram(parameters.GramCentCount);
+        }
+
         /// <summary>
         /// Takes an upgraded gift to the TON blockchain: into the current user's wallet when there
         /// can be one, through Fragment otherwise.

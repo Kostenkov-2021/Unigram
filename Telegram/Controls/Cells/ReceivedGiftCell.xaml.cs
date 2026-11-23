@@ -151,7 +151,7 @@ namespace Telegram.Controls.Cells
                     }
 
                     ResaleStarCountRoot.Background = new SolidColorBrush(edgeColor.Darken());
-                    UpdateResalePrice(upgraded.Gift.ResaleParameters);
+                    UpdateResalePrice(upgraded.Gift);
                 }
                 else
                 {
@@ -165,12 +165,12 @@ namespace Telegram.Controls.Cells
             }
         }
 
-        private void UpdateResalePrice(GiftResaleParameters parameters)
+        private void UpdateResalePrice(UpgradedGift gift)
         {
             // The glyphs are drawn for Segoe UI's baseline, so they go inline rather than beside the text.
-            ResaleStarCount.Text = parameters.GramOnly
-                ? Icons.Gram14 + " " + (parameters.GramCentCount / 100d).ToString("0.##")
-                : Icons.Star14 + " " + parameters.StarCount.ToString("N0");
+            ResaleStarCount.Text = GiftHelper.IsResaleInGrams(gift)
+                ? Icons.Gram14 + " " + GiftHelper.FormatResaleGrams(gift, false)
+                : Icons.Star14 + " " + gift.ResaleParameters.StarCount.ToString("N0");
         }
 
         public void UpdateGift(IClientService clientService, SentGiftUpgraded upgraded)
@@ -252,7 +252,7 @@ namespace Telegram.Controls.Cells
 
             FindName(nameof(ResaleStarCountRoot));
             ResaleStarCountRoot.Background = new SolidColorBrush(edgeColor.Darken());
-            UpdateResalePrice(gift.Gift.ResaleParameters);
+            UpdateResalePrice(gift.Gift);
 
             Ribbon.Visibility = Visibility.Visible;
             Ribbon.Text = string.Format("#{0:N0}", gift.Gift.Number);

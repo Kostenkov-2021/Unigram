@@ -500,6 +500,9 @@
     <Compile Include="Controls\Messages\Service\MessageUpgradedGiftContent.xaml.cs">
       <DependentUpon>MessageUpgradedGiftContent.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\Messages\Service\MessageUpgradedGiftOnChainPurchaseOfferContent.xaml.cs">
+      <DependentUpon>MessageUpgradedGiftOnChainPurchaseOfferContent.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\Messages\Service\MessageUpgradedGiftPurchaseOfferContent.xaml.cs">
       <DependentUpon>MessageUpgradedGiftPurchaseOfferContent.xaml</DependentUpon>
     </Compile>
@@ -3750,6 +3753,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Controls\Messages\Service\MessageUpgradedGiftContent.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\Messages\Service\MessageUpgradedGiftOnChainPurchaseOfferContent.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
