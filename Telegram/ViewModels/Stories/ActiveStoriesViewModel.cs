@@ -107,6 +107,11 @@ namespace Telegram.ViewModels.Stories
 
         public ObservableCollection<StoryViewModel> Items { get; }
 
+        /// <summary>
+        /// Whether a story is pinned to the top of the profile list this viewer was opened from; null elsewhere.
+        /// </summary>
+        public Func<StoryViewModel, bool> IsPinned { get; set; }
+
         public MessageDelegate Delegate => _messageDelegate;
 
         private StoryViewModel _selectedItem;
@@ -213,6 +218,16 @@ namespace Telegram.ViewModels.Stories
         public override MessageTopic OutgoingTopicId { get; }
 
         protected override bool CanSchedule => false;
+
+        /// <summary>
+        /// Raised on the UI thread after a reply goes out.
+        /// </summary>
+        public event EventHandler MessageSent;
+
+        protected override void ContinueSendMessage(MessageSendOptions options)
+        {
+            MessageSent?.Invoke(this, EventArgs.Empty);
+        }
 
         public override void ViewSticker(Sticker sticker)
         {

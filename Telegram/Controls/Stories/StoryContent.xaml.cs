@@ -87,8 +87,19 @@ namespace Telegram.Controls.Stories
 
         private void OnTick(object sender, EventArgs e)
         {
+            if (IsLooping)
+            {
+                _timer.Start();
+                Progress.Restart();
+                return;
+            }
+
             Completed?.Invoke(this, EventArgs.Empty);
         }
+
+        // A story still being posted or edited, or whose post failed, plays again rather than
+        // moving on, so that its state stays on screen until it settles.
+        private bool IsLooping => _viewModel?.SelectedItem is { IsBeingPosted: true } or { IsBeingEdited: true } or { IsPostFailed: true };
 
         public event EventHandler<StoryEventArgs> MoreClick;
 
@@ -375,13 +386,22 @@ namespace Telegram.Controls.Stories
                 LiveBadge.Visibility = Visibility.Collapsed;
                 Subtitle.Text = Strings.UploadingStory;
             }
+            else if (story.Date == 0)
+            {
+                LiveBadge.Visibility = Visibility.Collapsed;
+                Subtitle.Text = string.Format("{0}/{1}", 1 + ViewModel.Items.IndexOf(story), ViewModel.Items.Count);
+            }
             else
             {
                 LiveBadge.Visibility = Visibility.Collapsed;
-                Subtitle.Text = story.Date != 0
-                    ? Locale.FormatRelativeShort(story.Date)
-                    : string.Format("{0}/{1}", 1 + ViewModel.Items.IndexOf(story), ViewModel.Items.Count);
+                Subtitle.Text = story.IsEdited
+                    ? Locale.FormatRelativeShort(story.Date) + " · " + Strings.EditedMessage
+                    : Locale.FormatRelativeShort(story.Date);
             }
+
+            PinnedIcon.Visibility = ViewModel.IsPinned?.Invoke(story) == true
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
 
         private void Update(StoryViewModel story)
@@ -1487,7 +1507,7 @@ namespace Telegram.Controls.Stories
             {
                 CreateSwapChain = true,
                 Mute = AppSettings.VolumeMuted,
-                Volume = 1,
+                Volume = AppSettings.VolumeLevel,
             };
 
             try
@@ -1520,6 +1540,14 @@ namespace Telegram.Controls.Stories
 
         private void OnEndReached(AsyncMediaPlayer sender, object e)
         {
+            if (IsLooping)
+            {
+                // Play restarts an ended player by itself.
+                sender.Play();
+                Progress.Restart();
+                return;
+            }
+
             Completed?.Invoke(this, EventArgs.Empty);
         }
 
@@ -1697,6 +1725,40 @@ namespace Telegram.Controls.Stories
             _player?.Mute = AppSettings.VolumeMuted;
         }
 
+        /// <summary>
+        /// Steps the shared playback volume of a video with sound. While muted, any step unmutes
+        /// instead, and stepping down to nothing mutes at full volume, as the gallery does.
+        /// </summary>
+        public void ChangeVolume(double amount)
+        {
+            if (_player == null || Mute.Visibility != Visibility.Visible || !Mute.IsEnabled)
+            {
+                return;
+            }
+
+            var volume = AppSettings.VolumeLevel;
+            var muted = false;
+
+            if (!AppSettings.VolumeMuted)
+            {
+                volume = Math.Clamp(Math.Round(volume + amount, 1), 0, 1);
+
+                if (volume == 0)
+                {
+                    volume = 1;
+                    muted = true;
+                }
+            }
+
+            AppSettings.VolumeLevel = volume;
+            AppSettings.VolumeMuted = muted;
+
+            _player.Volume = volume;
+            _player.Mute = muted;
+
+            Mute.IsChecked = !muted;
+        }
+
         private void Caption_Click(object sender, RoutedEventArgs e)
         {
             Overflow.MaxLines = Overflow.MaxLines == 0 ? 1 : 0;
@@ -1787,7 +1849,7 @@ namespace Telegram.Controls.Stories
 
         public void CopyLink(StoryViewModel story)
         {
-            if (story.ClientService.TryGetUser(story.Chat, out User user) && user.HasActiveUsername(out string username))
+            if (story.TryGetLinkUsername(out string username))
             {
                 MessageHelper.CopyLink(story.ClientService, XamlRoot, new InternalLinkTypeStory(username, story.Id));
             }
@@ -2160,8 +2222,36 @@ namespace Telegram.Controls.Stories
             _progressController?.Progress = (float)Math.Clamp(progress, 0, 1);
         }
 
+        private double _duration;
+
+        /// <summary>
+        /// Plays the current segment again from the start.
+        /// </summary>
+        public void Restart()
+        {
+            if (_progressPropertySet != null)
+            {
+                _progressPropertySet.InsertScalar("Progress", 0);
+                StartProgress();
+            }
+        }
+
+        private void StartProgress()
+        {
+            var compositor = _progressPropertySet.Compositor;
+
+            var animation = compositor.CreateScalarKeyFrameAnimation();
+            animation.InsertKeyFrame(1.0f, 1.0f, compositor.CreateLinearEasingFunction());
+            animation.Duration = TimeSpan.FromSeconds(_duration);
+
+            _progressPropertySet.StartAnimation("Progress", animation);
+            _progressController = _progressPropertySet.TryGetAnimationController("Progress");
+        }
+
         public void Update(int index, int count, double duration)
         {
+            _duration = duration;
+
             Children.Clear();
             ColumnDefinitions.Clear();
 
@@ -2213,14 +2303,7 @@ namespace Telegram.Controls.Stories
                     // Apply the expression to the point visual's Offset property
                     ellipse.StartAnimation("Size", expression);
 
-                    // Start the animation by incrementing the progress value
-                    var easing = compositor.CreateLinearEasingFunction();
-                    var compositorAnimation = compositor.CreateScalarKeyFrameAnimation();
-                    compositorAnimation.InsertKeyFrame(1.0f, 1.0f, easing);
-                    compositorAnimation.Duration = TimeSpan.FromSeconds(duration); // Adjust duration as needed
-
-                    _progressPropertySet.StartAnimation("Progress", compositorAnimation);
-                    _progressController = _progressPropertySet.TryGetAnimationController("Progress");
+                    StartProgress();
                 }
 
                 ColumnDefinitions.Add(new ColumnDefinition());

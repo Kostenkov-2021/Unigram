@@ -293,7 +293,16 @@ namespace Telegram.ViewModels.Stories
         {
             ClientService.Send(new ToggleStoryIsPostedToChatPage(story.PosterChatId, story.Id, !story.IsPostedToChatPage));
 
-            ShowToast(story.IsPostedToChatPage ? Strings.StoryRemovedFromProfile : Strings.StorySavedToProfile);
+            if (story.Chat.Type is ChatTypeSupergroup)
+            {
+                ShowToast(story.IsPostedToChatPage
+                    ? Strings.StoryUnpinnedFromPosts
+                    : string.Format("**{0}**\n{1}", Strings.StoryPinnedToPosts, Strings.StoryPinnedToPostsDescription));
+            }
+            else
+            {
+                ShowToast(story.IsPostedToChatPage ? Strings.StoryRemovedFromProfile : Strings.StorySavedToProfile);
+            }
         }
 
         public async Task ReportStoryAsync(StoryViewModel story)

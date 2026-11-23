@@ -6197,6 +6197,7 @@
 
 
 
+    <string name="MessageSent">Message sent.</string>
     <string name="ExpiredStory">Expired story</string>
     <string name="ProfileStories">Posts</string>
 
@@ -6272,6 +6273,8 @@
     <string name="SaveVideo">Save Video</string>
     <string name="SaveToProfile">Post to Profile</string>
     <string name="ArchiveStory">Remove from Profile</string>
+    <string name="SaveToPosts">Save to Posts</string>
+    <string name="RemoveFromPosts">Remove from Posts</string>
     <string name="ArchiveStories_one">Archive Story</string>
     <string name="ArchiveStories_other">Archive Stories</string>
 
@@ -11364,6 +11367,9 @@
     <string name="StoryHiddenHint">**{0}** will not be able to see your stories.</string>
     <string name="StoryRemovedFromProfile">Story removed from your profile.</string>
     <string name="StorySavedToProfile">Story posted to your profile.</string>
+    <string name="StoryPinnedToPosts">Story saved to the channel’s profile</string>
+    <string name="StoryPinnedToPostsDescription">Saved stories can be viewed by others on the channel’s profile until an admin removes them.</string>
+    <string name="StoryUnpinnedFromPosts">Story removed from the channel’s profile</string>
     <string name="StorySelectedContactsHintSelf">Only some users you selected can view this story.</string>
     <string name="StoryShowTo">Do Not Hide My Stories From {0}</string>
     <string name="StoryShownHint">**{0}** will be able to see your stories again.</string>

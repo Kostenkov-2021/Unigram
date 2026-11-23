@@ -398,7 +398,7 @@ namespace Telegram.Controls.Stories
                         child.Completed += OnCompleted;
                         child.ContextRequested += Story_ContextRequested;
 
-                        Composer.DataContext = viewModel.Items[real];
+                        SetComposer(viewModel.Items[real]);
 
                         var selectedItem = viewModel.Items[real].SelectedItem;
                         if (selectedItem == null)
@@ -464,6 +464,44 @@ namespace Telegram.Controls.Stories
             if (_index == _total - 1 && _viewModel.Items is ISupportIncrementalLoading incremental && incremental.HasMoreItems)
             {
                 LoadMoreItems(incremental);
+            }
+        }
+
+        private ActiveStoriesViewModel _composerViewModel;
+
+        private void SetComposer(ActiveStoriesViewModel viewModel)
+        {
+            if (_composerViewModel == viewModel)
+            {
+                return;
+            }
+
+            if (_composerViewModel != null)
+            {
+                _composerViewModel.MessageSent -= OnMessageSent;
+            }
+
+            _composerViewModel = viewModel;
+            Composer.DataContext = viewModel;
+
+            if (viewModel != null)
+            {
+                viewModel.MessageSent += OnMessageSent;
+            }
+        }
+
+        private async void OnMessageSent(object sender, EventArgs e)
+        {
+            if (sender is not ActiveStoriesViewModel activeStories)
+            {
+                return;
+            }
+
+            var confirm = await ToastPopup.ShowActionAsync(XamlRoot, Strings.MessageSent, Strings.ViewInChat, ToastPopupIcon.Forward);
+            if (confirm == ContentDialogResult.Primary && _viewModel != null)
+            {
+                TryHide(ContentDialogResult.Primary);
+                _viewModel.SendMessage(activeStories);
             }
         }
 
@@ -938,6 +976,12 @@ namespace Telegram.Controls.Stories
             _displayRequest.TryRequestRelease();
             UpdateScreenCapture();
 
+            if (_composerViewModel != null)
+            {
+                _composerViewModel.MessageSent -= OnMessageSent;
+                _composerViewModel = null;
+            }
+
             _viewModel?.Aggregator.Unsubscribe(this);
             _stealthTimer.Stop();
         }
@@ -1044,16 +1088,11 @@ namespace Telegram.Controls.Stories
             //    ScrollingHost.Zoom(keyCode is 187 || args.VirtualKey is VirtualKey.Add);
             //    args.Handled = true;
             //}
-            //else if (args.VirtualKey is VirtualKey.Up && _mediaPlayer?.Source != null)
-            //{
-            //    _mediaPlayer.Volume = Math.Clamp(_mediaPlayer.Volume + 0.1, 0, 1);
-            //    args.Handled = true;
-            //}
-            //else if (args.VirtualKey is VirtualKey.Down && _mediaPlayer?.Source != null)
-            //{
-            //    _mediaPlayer.Volume = Math.Clamp(_mediaPlayer.Volume - 0.1, 0, 1);
-            //    args.Handled = true;
-            //}
+            else if (args.Key is VirtualKey.Up or VirtualKey.Down && args.Modifiers == VirtualKeyModifiers.None && FocusManager.GetFocusedElement(XamlRoot) is not RichEditBox)
+            {
+                ActiveCard?.ChangeVolume(args.Key is VirtualKey.Up ? 0.1 : -0.1);
+                args.Handled = true;
+            }
         }
 
         private void Story_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
@@ -1102,8 +1141,9 @@ namespace Telegram.Controls.Stories
                 return;
             }
 
-            // Your own story can be replied to, in Saved Messages, but not reacted to.
-            if (story.CanBeReplied && !activeStories.IsMyStory)
+            // Your own story can be replied to, in Saved Messages, but not reacted to. A chat's story
+            // can't be replied to, and is reacted to all the same.
+            if ((story.CanBeReplied || story.Chat.Type is ChatTypeSupergroup) && !activeStories.IsMyStory)
             {
                 flyout.Opened += async (s, args) =>
                 {
@@ -1140,7 +1180,11 @@ namespace Telegram.Controls.Stories
 
             if (story.CanToggleIsPostedToChatPage)
             {
-                flyout.CreateFlyoutItem(ViewModel.ArchiveStory, story, story.IsPostedToChatPage ? Strings.ArchiveStory : Strings.SaveToProfile, story.IsPostedToChatPage ? Icons.StoriesPinnedOff : Icons.StoriesPinned);
+                var text = story.Chat.Type is ChatTypeSupergroup
+                    ? story.IsPostedToChatPage ? Strings.RemoveFromPosts : Strings.SaveToPosts
+                    : story.IsPostedToChatPage ? Strings.ArchiveStory : Strings.SaveToProfile;
+
+                flyout.CreateFlyoutItem(ViewModel.ArchiveStory, story, text, story.IsPostedToChatPage ? Icons.StoriesPinnedOff : Icons.StoriesPinned);
             }
 
             if (!activeStories.IsMyStory && activeStories.ChatId != activeStories.ClientService.Options.TelegramServiceNotificationsChatId)
@@ -1179,7 +1223,7 @@ namespace Telegram.Controls.Stories
                 flyout.CreateFlyoutItem(StealthStory, story, Strings.StealthModeButton, story.ClientService.IsPremium ? Icons.Stealth : Icons.StealthLocked);
             }
 
-            if (story.ClientService.TryGetUser(story.Chat, out User user) && user.HasActiveUsername(out _))
+            if (story.TryGetLinkUsername(out _))
             {
                 flyout.CreateFlyoutItem(CopyLink, story, Strings.CopyLink, Icons.Link);
             }

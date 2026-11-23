@@ -167,6 +167,7 @@
                             <Grid Grid.Row="1">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition />
                                 </Grid.ColumnDefinitions>
                                 <Border x:Name="LiveBadge"
@@ -190,13 +191,23 @@
                                                Typography.NumeralAlignment="Tabular" />
                                 </Border>
 
+                                <TextBlock x:Name="PinnedIcon"
+                                           Text="&#xEA8A;"
+                                           Foreground="{ThemeResource PageHeaderDisabledBrush}"
+                                           FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                           FontSize="12"
+                                           VerticalAlignment="Bottom"
+                                           Margin="0,0,4,2"
+                                           Visibility="Collapsed"
+                                           Grid.Column="1" />
+
                                 <TextBlock x:Name="Subtitle"
                                            Foreground="{ThemeResource PageHeaderDisabledBrush}"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            TextWrapping="NoWrap"
                                            TextTrimming="CharacterEllipsis"
                                            VerticalAlignment="Bottom"
-                                           Grid.Column="1" />
+                                           Grid.Column="2" />
                             </Grid>
                         </Grid>
                     </Grid>
