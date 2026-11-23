@@ -459,29 +459,11 @@ namespace Telegram.ViewModels
 
         #region Gift offers
 
-        public async void DeclineGiftOnChainPurchaseOffer(MessageViewModel message)
+        public void DeclineGiftOnChainPurchaseOffer(MessageViewModel message)
         {
-            if (message.Content is not MessageUpgradedGiftOnChainPurchaseOffer offer)
+            if (message.Content is MessageUpgradedGiftOnChainPurchaseOffer offer)
             {
-                return;
-            }
-
-            var text = string.Format(Strings.GiftOnchainOfferDeclineText, GiftHelper.FormatGrams(offer.GramAmount), GiftHelper.NoBreak(offer.Gift.ToName()));
-
-            var confirm = await ShowPopupAsync(ClientEx.ParseMarkdown(text), Strings.GiftOnchainOfferDeclineTitle, Strings.GiftOnchainOfferDecline, Strings.Cancel, destructive: true);
-            if (confirm != ContentDialogResult.Primary)
-            {
-                return;
-            }
-
-            var response = await ClientService.SendAsync(new DeclineGiftOnChainPurchaseOffer(message.Id));
-            if (response is Ok)
-            {
-                ShowToast(Strings.GiftOnchainOfferDeclined, ToastPopupIcon.Success);
-            }
-            else if (response is Error error)
-            {
-                ShowToast(error);
+                GiftOnChainHelper.DeclineOffer(ClientService, NavigationService, message.Id, offer);
             }
         }
 

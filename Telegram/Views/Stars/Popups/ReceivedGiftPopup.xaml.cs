@@ -1768,7 +1768,7 @@ namespace Telegram.Views.Stars.Popups
 
         private async void Resell()
         {
-            if (_gift.Gift is not SentGiftUpgraded upgraded || !TransferGiftPopup.CheckOnChainResale(_navigationService, upgraded.Gift))
+            if (_gift.Gift is not SentGiftUpgraded upgraded)
             {
                 return;
             }
@@ -1792,6 +1792,15 @@ namespace Telegram.Views.Stars.Popups
                 }
 
                 _navigationService.ShowPopup(message, Strings.Gift2ResellTimeoutTitle, Strings.OK);
+            }
+            else if (upgraded.Gift.ResaleParameters != null && upgraded.Gift.UsesOnChainResale)
+            {
+                // Nothing changes here until the transaction lands, so the sheet goes rather than
+                // showing a sale that is being cancelled as still running.
+                if (await GiftOnChainHelper.DelistAsync(_clientService, _navigationService, upgraded.Gift))
+                {
+                    Hide();
+                }
             }
             else if (upgraded.Gift.ResaleParameters != null)
             {
@@ -1826,8 +1835,14 @@ namespace Telegram.Views.Stars.Popups
 
         private async void ChangePrice()
         {
-            if (_gift.Gift is not SentGiftUpgraded upgraded || !TransferGiftPopup.CheckOnChainResale(_navigationService, upgraded.Gift))
+            if (_gift.Gift is not SentGiftUpgraded upgraded)
             {
+                return;
+            }
+
+            if (upgraded.Gift.UsesOnChainResale)
+            {
+                ChangeOnChainPrice(upgraded.Gift);
                 return;
             }
 
@@ -1876,6 +1891,38 @@ namespace Telegram.Views.Stars.Popups
             else if (response is Error error)
             {
                 ToastPopup.ShowError(XamlRoot, error);
+            }
+        }
+
+        private async void ChangeOnChainPrice(UpgradedGift gift)
+        {
+            var listed = gift.ResaleParameters;
+
+            // A Fragment sale is cancelled and started again to change its price.
+            if (listed != null && !listed.IsFixedOnChain)
+            {
+                if (await GiftOnChainHelper.ExplainChangePriceAsync(_clientService, _navigationService, gift))
+                {
+                    Hide();
+                }
+
+                return;
+            }
+
+            // The server picks the kind of a new sale; this is only what the price is asked under.
+            var fixedPrice = listed?.IsFixedOnChain ?? _clientService.Options.CanBuyOnChainFixedPriceGifts;
+
+            var popup = new GiftResalePricePopup(_clientService, listed?.GramAmount ?? 0, fixedPrice, listed != null);
+
+            var confirm = await popup.ShowAsync(XamlRoot);
+            if (confirm != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            if (await GiftOnChainHelper.ListAsync(_clientService, _navigationService, gift, popup.GramAmount, listed != null))
+            {
+                Hide();
             }
         }
 
@@ -1985,6 +2032,13 @@ namespace Telegram.Views.Stars.Popups
                 return;
             }
 
+            // An on-chain sale holds the gift in its contract, so there is nothing to transfer.
+            if (upgraded.Gift.UsesOnChainResale && upgraded.Gift.ResaleParameters != null)
+            {
+                _navigationService.ShowPopup(Strings.GiftOnchainTransferUnlistFirst, Strings.Gift2TransferOption, Strings.OK);
+                return;
+            }
+
             if (TransferGiftPopup.CheckTransferDate(_navigationService, _gift))
             {
                 Hide();
@@ -2024,12 +2078,6 @@ namespace Telegram.Views.Stars.Popups
                 return;
             }
 
-            if (!TransferGiftPopup.CheckOnChainResale(_navigationService, upgraded.Gift))
-            {
-                _submitted = false;
-                return;
-            }
-
             var chat = await _clientService.GetChatFromMessageSenderAsync(_sendGiftTo);
 
             var text = string.Empty.AsFormattedText();
@@ -2051,7 +2099,14 @@ namespace Telegram.Views.Stars.Popups
             }
 
             var response = await TransferGiftPopup.BuyAsync(_clientService, _navigationService, upgraded.Gift, chat, _sendGiftTo ?? _clientService.MyId, text, isPrivate);
-            if (response is GiftResaleResultOk)
+            if (response is Ok)
+            {
+                // Sent on-chain: the gift is not sold until the transaction lands, and the toasts
+                // say when it does.
+                Hide();
+                return;
+            }
+            else if (response is GiftResaleResultOk)
             {
                 _aggregator.Publish(new UpdateGiftIsSold(_gift.ReceivedGiftId));
                 Hide(ContentDialogResult.Primary);

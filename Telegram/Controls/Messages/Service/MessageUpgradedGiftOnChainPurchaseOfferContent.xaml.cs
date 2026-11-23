@@ -130,11 +130,25 @@ namespace Telegram.Controls.Messages.Service
 
         private void Action_Click(object sender, RoutedEventArgs e)
         {
-            // TODO: withdraw with cancelGiftOnChainPurchaseOffer and review with
-            // acceptGiftOnChainPurchaseOffer, sent with sendTonWalletTransaction, once the wallet
-            // engine can sign TDLib's messages unchanged. Declining needs no signature and is in
-            // the message menu.
-            Message?.Delegate.NavigationService.ShowPopup(Strings.GiftOnchainErrorUnsupported, Strings.AppName, Strings.OK);
+            if (Message is not MessageViewModel message || message.Content is not MessageUpgradedGiftOnChainPurchaseOffer offer)
+            {
+                return;
+            }
+
+            // A request, a sheet or a transaction for this offer is already under way.
+            if (GiftOnChainHelper.IsOfferBusy(message.ClientService, message.Id))
+            {
+                return;
+            }
+
+            if (offer.IsBuyer)
+            {
+                GiftOnChainHelper.WithdrawOffer(message.ClientService, message.Delegate.NavigationService, message.Id, offer);
+            }
+            else
+            {
+                GiftOnChainHelper.ReviewOffer(message.ClientService, message.Delegate.NavigationService, message.Id, offer);
+            }
         }
     }
 }

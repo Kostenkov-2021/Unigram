@@ -148,6 +148,10 @@ namespace Telegram.Services.Wallet
         private List<TonWalletTransaction> _confirmed = new List<TonWalletTransaction>();
         private List<TonWalletTransaction> _pending = new List<TonWalletTransaction>();
 
+        // Who is waiting to hear how a sent transaction ended, by the pending row's id. Guarded by
+        // _mutex, like the rows.
+        private readonly Dictionary<string, TaskCompletionSource<bool>> _outcomes = new Dictionary<string, TaskCompletionSource<bool>>();
+
         // The two of them, as the view sees them. Rebuilt when either moves, never edited.
         private IReadOnlyList<TonWalletTransaction> _activity = Array.Empty<TonWalletTransaction>();
         private WalletResource _activityResource = WalletResource.Idle;
@@ -539,6 +543,7 @@ namespace Telegram.Services.Wallet
                         // from the previous one survives the change.
                         _confirmed = new List<TonWalletTransaction>();
                         _pending = new List<TonWalletTransaction>();
+                        _outcomes.Clear();
 
                         // Whatever was in flight belonged to the wallet that is gone.
                         StopResolver();
@@ -1042,6 +1047,152 @@ namespace Telegram.Services.Wallet
             return WalletTransferResult.Sent;
         }
 
+        public async Task<WalletTransactionResult> SendTransactionAsync(IReadOnlyList<TonWalletMessage> messages, IReadOnlyList<TonWalletMessage> gaslessMessages, WalletVault.WalletVaultLease lease)
+        {
+            var client = _client;
+            if (client == null || _descriptor == null)
+            {
+                throw new WalletNotBoundException();
+            }
+
+            var regular = EngineMessages(messages);
+            if (regular == null)
+            {
+                return new WalletTransactionResult(WalletTransactionStatus.Unsupported);
+            }
+
+            // A relayed form this wallet cannot sign leaves the regular one, which is what TDLib
+            // is told to send when no relayed form is offered.
+            var relayed = EngineMessages(gaslessMessages);
+
+            await EnsureLeaseAsync(lease);
+
+            if (_rotation != null)
+            {
+                throw new WalletRotationPendingException();
+            }
+
+            if (HasUnsettledTransfer())
+            {
+                throw new WalletTransferInProgressException();
+            }
+
+            var intent = new SendIntent(new SendExpiration.EngineDefault(), regular);
+            PreparedTransfer prepared;
+
+            try
+            {
+                prepared = await client.PrepareTransfer(new PrepareTransferRequest(NewRecordId(), intent, relayed));
+            }
+            catch (WalletClientException.InsufficientBalance ex)
+            {
+                return new WalletTransactionResult(WalletTransactionStatus.InsufficientBalance, BigInteger.Parse(ex.requestedNanograms, CultureInfo.InvariantCulture));
+            }
+            catch (WalletClientException.InsufficientBalanceForFees ex)
+            {
+                var required = BigInteger.Parse(ex.requestedNanograms, CultureInfo.InvariantCulture) + BigInteger.Parse(ex.estimatedFeeNanograms, CultureInfo.InvariantCulture);
+                return new WalletTransactionResult(WalletTransactionStatus.InsufficientBalance, required);
+            }
+            catch (WalletClientException.InvalidSendRequest ex)
+            {
+                Logger.Error("wallet transaction refused by the engine: " + ex.Message);
+                return new WalletTransactionResult(WalletTransactionStatus.Unsupported);
+            }
+
+            var external = Bytes(prepared.ExternalBoc);
+            var gasless = relayed != null ? Bytes(prepared.InternalBoc) : Array.Empty<byte>();
+
+            var amount = BigInteger.Zero;
+
+            foreach (var message in messages)
+            {
+                amount += message.GramAmount;
+            }
+
+            TaskCompletionSource<bool> outcome;
+
+            // Held as pending like a transfer, so nothing else is signed against the same seqno
+            // until this lands or expires; the history replaces it with what TDLib reports.
+            await _mutex.WaitAsync();
+            try
+            {
+                AddPending(messages[0].DestinationAddress, 0, null, amount, string.Empty, false, relayed != null, prepared.OperationId, prepared.ValidUntil);
+                SetState(Project());
+
+                // Asynchronous continuations, because it is completed under the lock.
+                outcome = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _outcomes[prepared.OperationId] = outcome;
+            }
+            finally
+            {
+                _mutex.Release();
+            }
+
+            Raise();
+
+            var request = _clientService.SendAsync(new SendTonWalletTransaction(external, gasless));
+            await CompleteTransferAsync(prepared.OperationId, request);
+
+            // Only a refusal means it never left; anything else is settled by the history.
+            if (await request is Error error && error.Code >= 400 && error.Code < 500)
+            {
+                return new WalletTransactionResult(WalletTransactionStatus.Refused, error: error);
+            }
+
+            return new WalletTransactionResult(WalletTransactionStatus.Sent, outcome: outcome.Task);
+        }
+
+        /// <summary>
+        /// TDLib's messages as the engine signs them, or null when there are none or one of them
+        /// cannot be signed unchanged.
+        /// </summary>
+        private static EngineSendMessage[] EngineMessages(IReadOnlyList<TonWalletMessage> messages)
+        {
+            if (messages == null || messages.Count == 0)
+            {
+                return null;
+            }
+
+            var result = new EngineSendMessage[messages.Count];
+
+            for (int i = 0; i < messages.Count; i++)
+            {
+                var message = messages[i];
+
+                // The engine keeps the debit exact, so it takes only the modes that do: fees paid
+                // separately (1), errors ignored (2) and bounce on a failed action phase (16).
+                if (message.SendMode < 0 || (message.SendMode & ~(1 | 2 | 16)) != 0)
+                {
+                    return null;
+                }
+
+                string stateInit = null;
+
+                if (message.InitialState != null)
+                {
+                    stateInit = WalletEngineMethods.BuildContractStateInit(message.InitialState.Code, message.InitialState.Data);
+
+                    if (stateInit == null)
+                    {
+                        return null;
+                    }
+                }
+
+                SendMessageBody body = message.Body.Length > 0
+                    ? new SendMessageBody.RawPayload(Convert.ToBase64String(message.Body))
+                    : new SendMessageBody.Empty();
+
+                result[i] = new EngineSendMessage(
+                    message.DestinationAddress,
+                    new SendAmount.ExactWithMode(message.GramAmount.ToString(CultureInfo.InvariantCulture), (byte)message.SendMode),
+                    body,
+                    Bounceable(message.DestinationAddress, stateInit != null),
+                    stateInit);
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// Settles the row SendAsync added, once the account answers the transfer.
         /// </summary>
@@ -1083,6 +1234,7 @@ namespace Telegram.Services.Wallet
                         _pending = items;
 
                         Succeed(pending.Id, result.Transaction);
+                        Settle(pending.Id, true);
                         AddConfirmed(result.Transaction);
                     }
                     else if (response is TonWalletTransferResult accepted)
@@ -1110,6 +1262,8 @@ namespace Telegram.Services.Wallet
 
                         items[index] = With(pending, new TonWalletTransactionStateFailed(), pending.Type);
                         _pending = items;
+
+                        Settle(pending.Id, false);
 
                         RebuildActivity();
                     }
@@ -1195,6 +1349,30 @@ namespace Telegram.Services.Wallet
                 // An estimate nobody can be given is a line that is not shown, never a failure:
                 // the transfer itself does not depend on this having worked.
                 Logger.Error("wallet fee could not be estimated: " + ex.Message);
+                return null;
+            }
+        }
+
+        public async Task<BigInteger?> EstimateTransactionFeeAsync(IReadOnlyList<TonWalletMessage> messages)
+        {
+            var client = _client;
+            var regular = EngineMessages(messages);
+
+            if (client == null || regular == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                var intent = new SendIntent(new SendExpiration.EngineDefault(), regular);
+                var preview = await client.PreviewSend(new SendPreviewRequest(intent));
+
+                return BigInteger.Parse(preview.Emulation.WalletFeesNanograms);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("wallet transaction fee could not be estimated: " + ex.Message);
                 return null;
             }
         }
@@ -3005,6 +3183,15 @@ namespace Telegram.Services.Wallet
             }
         }
 
+        private void Settle(string pendingId, bool landed)
+        {
+            if (_outcomes.TryGetValue(pendingId, out var outcome))
+            {
+                _outcomes.Remove(pendingId);
+                outcome.TrySetResult(landed);
+            }
+        }
+
         // Kept for the session: the list keys a transaction by its predecessor for as long as it
         // holds it, and a pending row is rare enough that this never grows to matter.
         private void Succeed(string pendingId, TonWalletTransaction transaction)
@@ -3400,6 +3587,7 @@ namespace Telegram.Services.Wallet
                 foreach (var (id, transaction) in landed)
                 {
                     Succeed(id, transaction);
+                    Settle(id, true);
                     AddConfirmed(transaction);
                 }
 
@@ -3474,6 +3662,7 @@ namespace Telegram.Services.Wallet
                         Logger.Info(string.Format("wallet transfer confirmed: {0}", snapshot.Resolution?.TransactionHash));
 
                         items.RemoveAt(index);
+                        Settle(pending.Id, true);
 
                         landed = true;
                         changed = true;
@@ -3495,6 +3684,7 @@ namespace Telegram.Services.Wallet
                             new TonWalletTransactionStateFailed(),
                             pending.Type);
 
+                        Settle(pending.Id, false);
                         changed = true;
                     }
                 }
@@ -4260,21 +4450,24 @@ namespace Telegram.Services.Wallet
         /// case the flag exists for, and sending to it unbounced is how the funds are lost.
         ///
         /// A raw `workchain:hex` address carries no flag, and bounceable is the safe reading of
-        /// silence - a bounce costs the fees, not the transfer.
+        /// silence - a bounce costs the fees, not the transfer. The exception is a message that
+        /// <paramref name="deploys"/> the contract it goes to, which is sent unbounced, the way a
+        /// deployment always is.
         /// </remarks>
-        private static bool Bounceable(string address)
+        private static bool Bounceable(string address, bool deploys = false)
         {
             try
             {
-                return WalletEngineMethods.ParseTonAddress(address).Format is not TonAddressFormat.UserFriendly friendly
-                    || friendly.Bounceable;
+                return WalletEngineMethods.ParseTonAddress(address).Format is TonAddressFormat.UserFriendly friendly
+                    ? friendly.Bounceable
+                    : !deploys;
             }
             catch (Exception ex)
             {
                 // Unparseable here means the transfer is about to fail anyway, and the engine is
                 // the one that should say so.
                 Logger.Error("wallet address could not be read for its bounce flag: " + ex.Message);
-                return true;
+                return !deploys;
             }
         }
 

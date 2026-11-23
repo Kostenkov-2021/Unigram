@@ -1907,6 +1907,9 @@
     <Compile Include="Views\Stars\Popups\GiftResalePricePopup.xaml.cs">
       <DependentUpon>GiftResalePricePopup.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\Stars\Popups\GiftOnChainConfirmPopup.xaml.cs">
+      <DependentUpon>GiftOnChainConfirmPopup.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\Stars\Popups\GiftMessagePopup.xaml.cs">
       <DependentUpon>GiftMessagePopup.xaml</DependentUpon>
     </Compile>
@@ -2584,6 +2587,7 @@
     <Compile Include="Common\MessageHelper.cs" />
     <Compile Include="Common\WalletCardSheen.cs" />
     <Compile Include="Common\GiftHelper.cs" />
+    <Compile Include="Common\GiftOnChainHelper.cs" />
     <Compile Include="Common\PaidMessageHelper.cs" />
     <Compile Include="Common\WalletHelper.cs" />
     <Compile Include="Controls\GlyphButton.cs" />
@@ -4597,6 +4601,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Views\Stars\Popups\GiftResalePricePopup.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Stars\Popups\GiftOnChainConfirmPopup.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

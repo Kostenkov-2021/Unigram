@@ -159,6 +159,14 @@ namespace Telegram.Services.Wallet
         Task<WalletTransferResult> SendAsync(string recipient, byte[] recipientPublicKey, long peerUserId, string peerDomain, BigInteger amountNanograms, string comment, bool isCommentPublic, bool allowGasless, int sendingId, WalletVault.WalletVaultLease lease);
 
         /// <summary>
+        /// Signs messages TDLib prepared, exactly as given, and sends them with
+        /// <c>sendTonWalletTransaction</c>.
+        /// </summary>
+        /// <param name="gaslessMessages">The relayed alternative, or null or empty when there is none.
+        /// Both forms share one seqno and expiry, so at most one of them can land.</param>
+        Task<WalletTransactionResult> SendTransactionAsync(IReadOnlyList<TonWalletMessage> messages, IReadOnlyList<TonWalletMessage> gaslessMessages, WalletVault.WalletVaultLease lease);
+
+        /// <summary>
         /// What the network would charge for a transfer, in nanograms, or null when it cannot be
         /// said - no wallet, no recipient yet, or the estimate did not come back.
         /// </summary>
@@ -167,6 +175,11 @@ namespace Telegram.Services.Wallet
         /// trip and is worth asking for only once the amount has settled.
         /// </remarks>
         Task<BigInteger?> EstimateFeeAsync(string recipient, BigInteger amountNanograms, string comment, bool isCommentPublic);
+
+        /// <summary>
+        /// The same for messages TDLib prepared, or null when they cannot be signed as given.
+        /// </summary>
+        Task<BigInteger?> EstimateTransactionFeeAsync(IReadOnlyList<TonWalletMessage> messages);
 
         /// <summary>
         /// What the network would charge to replace this wallet's signing key, in nanograms, or

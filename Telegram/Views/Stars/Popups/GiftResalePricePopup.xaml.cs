@@ -32,6 +32,12 @@ namespace Telegram.Views.Stars.Popups
         private bool _gram;
         private long _value;
 
+        // An on-chain sale is priced in Grams only, and a fixed-price one can be repriced.
+        private bool _onChain;
+        private bool _fixedPrice;
+        private bool _change;
+        private long _current;
+
         public GiftResalePricePopup(IClientService clientService, GiftResalePrice price)
         {
             InitializeComponent();
@@ -66,6 +72,31 @@ namespace Telegram.Views.Stars.Popups
 
             Label.Focus(FocusState.Keyboard);
         }
+
+        /// <summary>
+        /// The price of an on-chain sale, in Grams only. <paramref name="change"/> reprices a
+        /// fixed-price sale already running at <paramref name="gramAmount"/> nanograms.
+        /// </summary>
+        public GiftResalePricePopup(IClientService clientService, long gramAmount, bool fixedPrice, bool change)
+            : this(clientService, new GiftResalePriceGram(0))
+        {
+            _onChain = true;
+            _fixedPrice = fixedPrice;
+            _change = change;
+            _current = change ? gramAmount / NanogramsPerCent : 0;
+
+            GramOnly.Visibility = Visibility.Collapsed;
+
+            SetCurrency(true, _current, false);
+        }
+
+        // A hundredth of a Gram.
+        private const long NanogramsPerCent = 10_000_000;
+
+        /// <summary>
+        /// The price in nanograms, as the on-chain requests take it.
+        /// </summary>
+        public long GramAmount => _value * NanogramsPerCent;
 
         public GiftResalePrice Price => _gram
             ? new GiftResalePriceGram(_value)
@@ -107,7 +138,9 @@ namespace Telegram.Views.Stars.Popups
         {
             _gram = gram;
 
-            Title = gram ? Strings.ResellGiftTitleTON : Strings.ResellGiftTitle;
+            Title = _onChain
+                ? _change ? Strings.Gift2ChangePrice : _fixedPrice ? Strings.GiftOnchainSellFixed : Strings.GiftOnchainSellTitle
+                : gram ? Strings.ResellGiftTitleTON : Strings.ResellGiftTitle;
             GramOnly.IsChecked = gram;
 
             if (animated)
@@ -162,22 +195,39 @@ namespace Telegram.Views.Stars.Popups
 
             if (tooBig || tooSmall)
             {
-                ErrorText.Text = string.Format(tooBig ? Strings.ResellGiftPriceTooMuch : Strings.ResellGiftPriceTooSmall, FormatAmount(tooBig ? Maximum : Minimum));
+                if (_onChain)
+                {
+                    TextBlockHelper.SetMarkdown(ErrorText, string.Format(tooBig ? Strings.GiftOnchainSellPriceHigh : Strings.GiftOnchainSellPriceLow, FormatGram(tooBig ? Maximum : Minimum)));
+                }
+                else
+                {
+                    ErrorText.Text = string.Format(tooBig ? Strings.ResellGiftPriceTooMuch : Strings.ResellGiftPriceTooSmall, FormatAmount(tooBig ? Maximum : Minimum));
+                }
+
                 ErrorText.Visibility = Visibility.Visible;
                 HeaderText.Visibility = Visibility.Collapsed;
             }
             else
             {
-                HeaderText.Text = _gram ? Strings.ResellGiftPriceTitleTON : Strings.ResellGiftPriceTitle;
+                HeaderText.Text = _onChain
+                    ? Strings.GiftOnchainSellPriceHeader
+                    : _gram ? Strings.ResellGiftPriceTitleTON : Strings.ResellGiftPriceTitle;
                 HeaderText.Visibility = Visibility.Visible;
                 ErrorText.Visibility = Visibility.Collapsed;
             }
 
-            IsPrimaryButtonEnabled = value > 0 && !tooBig && !tooSmall;
+            IsPrimaryButtonEnabled = value > 0 && !tooBig && !tooSmall && !(_change && value == _current);
 
             double usd;
 
-            if (_gram)
+            if (_onChain)
+            {
+                FooterText.Text = _change || _fixedPrice ? Strings.GiftOnchainSellHintBuyerPays : Strings.GiftOnchainSellHint;
+                PrimaryButtonText = string.Format(_change ? Strings.GiftOnchainChangePriceButton : Strings.GiftOnchainSellPriceButton, FormatGram(value));
+
+                usd = value / 1000000d * _clientService.Options.MillionGramToUsdRate;
+            }
+            else if (_gram)
             {
                 var earnings = value * _clientService.Options.GiftResaleGramEarningsPerMille / 1000;
                 TextBlockHelper.SetMarkdown(FooterText, string.Format(Strings.ResellGiftInfoTON, FormatGram(earnings)));

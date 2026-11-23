@@ -181,12 +181,16 @@ namespace Telegram.Views.Popups
         /// <summary>
         /// Confirms and pays for a gift on sale, asking again whenever the seller raised the price meanwhile.
         /// Returns null when the user gave up, otherwise TDLib's answer or <see cref="ErrorStarsNeeded"/>.
+        /// A gift sold on-chain answers <see cref="Ok"/> once the transaction is sent, which is before
+        /// the gift changes hands.
         /// </summary>
         public static async Task<Object> BuyAsync(IClientService clientService, INavigationService navigationService, UpgradedGift gift, Chat chat, MessageSender ownerId, FormattedText text, bool isPrivate)
         {
-            if (!CheckOnChainResale(navigationService, gift))
+            if (gift.UsesOnChainResale)
             {
-                return null;
+                return await GiftOnChainHelper.BuyAsync(clientService, navigationService, gift, chat, ownerId, text, isPrivate)
+                    ? new Ok()
+                    : null;
             }
 
             var gram = gift.ResaleParameters.GramOnly;
@@ -237,27 +241,6 @@ namespace Telegram.Views.Popups
 
                 return response;
             }
-        }
-
-        /// <summary>
-        /// False, after saying so, when the gift is bought, listed and delisted on-chain: TDLib hands
-        /// back wallet messages to sign instead of selling it itself.
-        /// </summary>
-        // TODO: buy, list and delist with getGiftOnChain{Purchase,Listing,Delisting}Transaction and
-        // sendTonWalletTransaction once the wallet engine can sign TDLib's messages unchanged.
-        public static bool CheckOnChainResale(INavigationService navigationService, UpgradedGift gift)
-        {
-            if (!gift.UsesOnChainResale)
-            {
-                return true;
-            }
-
-            var title = gift.ResaleParameters is { IsFixedOnChain: true }
-                ? Strings.GiftOnchainErrorTitleFixed
-                : Strings.GiftOnchainErrorTitle;
-
-            navigationService.ShowPopup(Strings.GiftOnchainErrorUnsupported, title, Strings.OK);
-            return false;
         }
 
         /// <summary>
