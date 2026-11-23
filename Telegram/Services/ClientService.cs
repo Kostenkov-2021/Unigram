@@ -309,6 +309,8 @@ namespace Telegram.Services
 
         bool HasSuggestedAction(SuggestedAction action);
 
+        bool TryGetSuggestedAction<T>(out T action) where T : SuggestedAction;
+
         Settings.NotificationsSettings Notifications { get; }
 
         void AddRecentlyOpenedChat(long chatId);
@@ -3030,43 +3032,36 @@ namespace Telegram.Services
 
         private readonly HashSet<SuggestedAction> _suggestedActions = new(new SuggestedActionComparer());
 
+        // TDLib's identity: the type plus the supergroup, the custom name and URL, and which of the
+        // two server email suggestions it is. Everything else, SetPassword's AuthorizationDelay and
+        // ExtendPremium's URL included, is payload: removals arrive with whatever value is current.
         private class SuggestedActionComparer : IEqualityComparer<SuggestedAction>
         {
             public bool Equals(SuggestedAction x, SuggestedAction y)
             {
+                if (x == null || y == null || x.GetType() != y.GetType())
+                {
+                    return x == y;
+                }
+
                 return x switch
                 {
-                    SuggestedActionCheckPassword => y is SuggestedActionCheckPassword,
-                    SuggestedActionCheckPhoneNumber => y is SuggestedActionCheckPhoneNumber,
-                    SuggestedActionEnableArchiveAndMuteNewChats => y is SuggestedActionEnableArchiveAndMuteNewChats,
-                    SuggestedActionGiftPremiumForChristmas => y is SuggestedActionGiftPremiumForChristmas,
-                    SuggestedActionRestorePremium => y is SuggestedActionRestorePremium,
-                    SuggestedActionSetBirthdate => y is SuggestedActionSetBirthdate,
-                    SuggestedActionSubscribeToAnnualPremium => y is SuggestedActionSubscribeToAnnualPremium,
-                    SuggestedActionUpgradePremium => y is SuggestedActionUpgradePremium,
-                    SuggestedActionViewChecksHint => y is SuggestedActionViewChecksHint,
-                    SuggestedActionConvertToBroadcastGroup convertToBroadcastGroup => y is SuggestedActionConvertToBroadcastGroup yc && yc.SupergroupId == convertToBroadcastGroup.SupergroupId,
-                    SuggestedActionSetPassword setPassword => y is SuggestedActionSetPassword ys && ys.AuthorizationDelay == setPassword.AuthorizationDelay,
-                    _ => false
+                    SuggestedActionConvertToBroadcastGroup xc => xc.SupergroupId == ((SuggestedActionConvertToBroadcastGroup)y).SupergroupId,
+                    SuggestedActionCustom xc => xc.Name == ((SuggestedActionCustom)y).Name && xc.Url == ((SuggestedActionCustom)y).Url,
+                    SuggestedActionSetLoginEmailAddress xe => xe.CanBeHidden == ((SuggestedActionSetLoginEmailAddress)y).CanBeHidden,
+                    _ => true
                 };
             }
 
             public int GetHashCode(SuggestedAction obj)
             {
+                var type = obj.GetType().GetHashCode();
                 return obj switch
                 {
-                    SuggestedActionCheckPassword => 0,
-                    SuggestedActionCheckPhoneNumber => 1,
-                    SuggestedActionEnableArchiveAndMuteNewChats => 2,
-                    SuggestedActionGiftPremiumForChristmas => 3,
-                    SuggestedActionRestorePremium => 4,
-                    SuggestedActionSetBirthdate => 5,
-                    SuggestedActionSubscribeToAnnualPremium => 6,
-                    SuggestedActionUpgradePremium => 7,
-                    SuggestedActionViewChecksHint => 8,
-                    SuggestedActionConvertToBroadcastGroup convertToBroadcastGroup => HashCode.Combine(9, convertToBroadcastGroup.SupergroupId),
-                    SuggestedActionSetPassword setPassword => HashCode.Combine(10, setPassword.AuthorizationDelay),
-                    _ => -1
+                    SuggestedActionConvertToBroadcastGroup convert => HashCode.Combine(type, convert.SupergroupId),
+                    SuggestedActionCustom custom => HashCode.Combine(type, custom.Name),
+                    SuggestedActionSetLoginEmailAddress email => HashCode.Combine(type, email.CanBeHidden),
+                    _ => type
                 };
             }
         }
@@ -3077,6 +3072,24 @@ namespace Telegram.Services
             {
                 return _suggestedActions.Contains(action);
             }
+        }
+
+        public bool TryGetSuggestedAction<T>(out T action) where T : SuggestedAction
+        {
+            lock (_suggestedActions)
+            {
+                foreach (var item in _suggestedActions)
+                {
+                    if (item is T typed)
+                    {
+                        action = typed;
+                        return true;
+                    }
+                }
+            }
+
+            action = null;
+            return false;
         }
 
         #endregion
@@ -4484,6 +4497,8 @@ namespace Telegram.Services
 
                             foreach (var action in updateSuggestedActions.AddedActions)
                             {
+                                // Replace rather than keep the old instance, which may carry a stale payload.
+                                _suggestedActions.Remove(action);
                                 _suggestedActions.Add(action);
                             }
                         }
