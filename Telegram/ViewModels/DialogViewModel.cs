@@ -4157,7 +4157,7 @@ namespace Telegram.ViewModels
 
         public async void OpenTextEditor()
         {
-            var popup = new TextEditorPopup(ClientService, NavigationService, GetFormattedText());
+            var popup = new TextEditorPopup(ClientService, NavigationService, Chat, GetFormattedText());
 
             var confirm = await ShowPopupAsync(popup);
 

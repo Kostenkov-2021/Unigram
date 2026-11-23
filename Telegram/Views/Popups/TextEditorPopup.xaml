@@ -16,6 +16,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <controls:TopNavView x:Name="Navigation"
                              Height="32"
@@ -408,5 +409,28 @@
                 </Grid>
             </ScrollViewer>
         </Grid>
+
+        <StackPanel x:Name="AlwaysUse"
+                    Visibility="Collapsed"
+                    Margin="12,4,12,0"
+                    Grid.Row="2">
+            <Border Background="{ThemeResource LayerOnMicaBaseAltFillColorSecondaryBrush}"
+                    CornerRadius="16"
+                    Padding="12,4,12,4">
+                <CheckBox x:Name="AlwaysUseCheck"
+                          Checked="AlwaysUseCheck_Checked">
+                    <StackPanel>
+                        <TextBlock Text="{CustomResource AIEditorAlwaysUse}" />
+                        <TextBlock x:Name="AlwaysUseSelection"
+                                   Style="{StaticResource InfoCaptionTextBlockStyle}"
+                                   Margin="0,0,0,6"
+                                   Visibility="Collapsed" />
+                    </StackPanel>
+                </CheckBox>
+            </Border>
+            <TextBlock Text="{CustomResource AIEditorAlwaysUseInfo}"
+                       Style="{StaticResource InfoCaptionTextBlockStyle}"
+                       Margin="12,8,12,24" />
+        </StackPanel>
     </Grid>
 </controls:ModalPopup>

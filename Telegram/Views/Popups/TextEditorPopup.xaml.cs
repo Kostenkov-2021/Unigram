@@ -27,6 +27,7 @@ namespace Telegram.Views.Popups
     {
         private readonly IClientService _clientService;
         private readonly INavigationService _navigationService;
+        private readonly Chat _chat;
         private readonly FormattedText _text;
 
         // Results by request key. Null while the request is in flight; a failure is not kept, so
@@ -48,12 +49,13 @@ namespace Telegram.Views.Popups
         private bool _failed;
         private bool _limitReached;
 
-        public TextEditorPopup(IClientService clientService, INavigationService navigationService, FormattedText text)
+        public TextEditorPopup(IClientService clientService, INavigationService navigationService, Chat chat, FormattedText text)
         {
             InitializeComponent();
 
             _clientService = clientService;
             _navigationService = navigationService;
+            _chat = chat;
             _text = text;
 
             _translateToLanguage = navigationService.Session.Settings.Translate.To;
@@ -63,6 +65,13 @@ namespace Telegram.Views.Popups
 
             Navigation.SelectedIndex = 1;
             Navigation.SelectionChanged += Navigation_SelectionChanged;
+
+            // Chat parameters are not supported in secret chats.
+            if (chat != null && chat.Type is not ChatTypeSecret)
+            {
+                AlwaysUse.Visibility = Visibility.Visible;
+                Preselect(chat.TextCompositionParameters);
+            }
 
             Title = Strings.AIEditor;
             PrimaryButtonText = Strings.AIEditorApply;
@@ -125,7 +134,142 @@ namespace Telegram.Views.Popups
             {
                 InitializeFix();
             }
+
+            UpdateAlwaysUse();
         }
+
+        #region Always use
+
+        private void Preselect(TextCompositionParameters parameters)
+        {
+            if (parameters == null)
+            {
+                return;
+            }
+
+            // The tabs hold one choice each, so parameters that combine them open on the first
+            // that applies, in the order the tabs are checked here.
+            if (parameters.FixText)
+            {
+                Navigation.SelectedIndex = 2;
+            }
+            else if (parameters.TranslateToLanguageCode.Length > 0)
+            {
+                _translateToLanguage = parameters.TranslateToLanguageCode;
+                TabTranslateEmoji.IsChecked = parameters.AddEmojis;
+                Navigation.SelectedIndex = 0;
+            }
+            else if (parameters.StyleName.Length > 0)
+            {
+                TabStyleEmoji.IsChecked = parameters.AddEmojis;
+                TabStyleItems.SelectedItem = _clientService.TextCompositionStyles.FirstOrDefault(x => x.Name == parameters.StyleName);
+            }
+
+            // A style that has since been removed leaves nothing to check.
+            if (GetParameters() != null)
+            {
+                AlwaysUseCheck.IsChecked = true;
+            }
+
+            UpdateAlwaysUse();
+        }
+
+        private TextCompositionParameters GetParameters()
+        {
+            switch (Navigation.SelectedIndex)
+            {
+                case 0:
+                    return new TextCompositionParameters(_translateToLanguage, string.Empty, TabTranslateEmoji.IsChecked is true, false);
+                case 1 when TabStyleItems.SelectedItem is TextCompositionStyle style:
+                    return new TextCompositionParameters(string.Empty, style.Name, TabStyleEmoji.IsChecked is true, false);
+                case 2:
+                    return new TextCompositionParameters(string.Empty, string.Empty, false, true);
+                default:
+                    return null;
+            }
+        }
+
+        private void UpdateAlwaysUse()
+        {
+            string selection;
+            bool addEmojis;
+
+            switch (Navigation.SelectedIndex)
+            {
+                case 0:
+                    selection = TranslateService.LanguageName(_translateToLanguage) ?? _translateToLanguage;
+                    addEmojis = TabTranslateEmoji.IsChecked is true;
+                    break;
+                case 1 when TabStyleItems.SelectedItem is TextCompositionStyle style:
+                    selection = style.Title;
+                    addEmojis = TabStyleEmoji.IsChecked is true;
+                    break;
+                case 2:
+                    selection = Strings.AIEditorTabFix;
+                    addEmojis = false;
+                    break;
+                default:
+                    AlwaysUseSelection.Visibility = Visibility.Collapsed;
+                    return;
+            }
+
+            AlwaysUseSelection.Text = addEmojis
+                ? "→ " + selection + " + " + Strings.Emoji
+                : "→ " + selection;
+            AlwaysUseSelection.Visibility = Visibility.Visible;
+        }
+
+        private void AlwaysUseCheck_Checked(object sender, RoutedEventArgs e)
+        {
+            if (GetParameters() == null)
+            {
+                AlwaysUseCheck.IsChecked = false;
+                VisualUtilities.ShakeView(AlwaysUseCheck);
+            }
+        }
+
+        private void SaveParameters()
+        {
+            if (AlwaysUse.Visibility == Visibility.Collapsed)
+            {
+                return;
+            }
+
+            TextCompositionParameters parameters = null;
+
+            if (AlwaysUseCheck.IsChecked is true)
+            {
+                parameters = GetParameters();
+
+                // Checked with nothing chosen on this tab: leave the chat as it was.
+                if (parameters == null)
+                {
+                    return;
+                }
+            }
+
+            if (AreEqual(_chat.TextCompositionParameters, parameters))
+            {
+                return;
+            }
+
+            _clientService.Send(new SetChatTextCompositionParameters(_chat.Id, parameters));
+        }
+
+        private static bool AreEqual(TextCompositionParameters x, TextCompositionParameters y)
+        {
+            if (x == null || y == null)
+            {
+                return x == y;
+            }
+
+            return x.TranslateToLanguageCode == y.TranslateToLanguageCode
+                && x.StyleName == y.StyleName
+                && x.AddEmojis == y.AddEmojis
+                && x.FixText == y.FixText;
+        }
+
+        #endregion
 
         #region Translate
 
@@ -166,6 +310,7 @@ namespace Telegram.Views.Popups
             _translateKey = _translateToLanguage + "_" + addEmojis;
 
             Compose(_translations, _translateKey, TabTranslateOutput, _translateToLanguage, string.Empty, addEmojis);
+            UpdateAlwaysUse();
         }
 
         private async void TabTranslateLanguage_Click(Hyperlink sender, HyperlinkClickEventArgs args)
@@ -181,7 +326,11 @@ namespace Telegram.Views.Popups
 
         private void TabTranslateEmoji_Checked(object sender, RoutedEventArgs e)
         {
-            UpdateTranslate();
+            // Preselection sets it before the tab has been opened.
+            if (_translateToName != null)
+            {
+                UpdateTranslate();
+            }
         }
 
         #endregion
@@ -291,6 +440,8 @@ namespace Telegram.Views.Popups
 
         private void UpdateStyle()
         {
+            UpdateAlwaysUse();
+
             if (TabStyleItems.SelectedItem is not TextCompositionStyle style)
             {
                 _styleKey = null;
@@ -473,6 +624,7 @@ namespace Telegram.Views.Popups
             if (result != null)
             {
                 Result = result;
+                SaveParameters();
             }
             else
             {

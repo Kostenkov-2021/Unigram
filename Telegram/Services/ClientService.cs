@@ -4077,6 +4077,16 @@ namespace Telegram.Services
                         break;
                     }
 
+                case UpdateChatTextCompositionParameters updateChatTextCompositionParameters:
+                    {
+                        if (_chats.TryGetValue(updateChatTextCompositionParameters.ChatId, out Chat value))
+                        {
+                            value.TextCompositionParameters = updateChatTextCompositionParameters.TextCompositionParameters;
+                        }
+
+                        break;
+                    }
+
                 case UpdateChatTheme updateChatTheme:
                     {
                         if (_chats.TryGetValue(updateChatTheme.ChatId, out Chat value))
