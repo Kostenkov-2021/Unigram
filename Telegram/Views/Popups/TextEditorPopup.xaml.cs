@@ -7,7 +7,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Telegram.Common;
@@ -17,7 +16,6 @@ using Telegram.Navigation.Services;
 using Telegram.Services;
 using Telegram.Streams;
 using Telegram.Td.Api;
-using Windows.Foundation;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Documents;
@@ -31,19 +29,32 @@ namespace Telegram.Views.Popups
         private readonly INavigationService _navigationService;
         private readonly FormattedText _text;
 
-        private readonly TaskCompletionSource<FormattedText> _tcs;
-        private bool _closedExpected;
+        // Results by request key. Null while the request is in flight; a failure is not kept, so
+        // coming back to it asks again.
+        private readonly Dictionary<string, FormattedText> _translations = new();
+        private readonly Dictionary<string, FormattedText> _styles = new();
+
+        private string _translateKey;
+        private string _styleKey;
 
         private string _translateToLanguage;
+        private Run _translateToName;
 
-        public TextEditorPopup(IClientService clientService, INavigationService navigationService, FormattedText text, TaskCompletionSource<FormattedText> result)
+        private bool _fixRequested;
+        private FixedText _fix;
+
+        // Per popup rather than per tab: a failed request turns Apply into OK, and the daily limit
+        // replaces it with Increase Limit, until a later request clears them.
+        private bool _failed;
+        private bool _limitReached;
+
+        public TextEditorPopup(IClientService clientService, INavigationService navigationService, FormattedText text)
         {
             InitializeComponent();
 
             _clientService = clientService;
             _navigationService = navigationService;
             _text = text;
-            _tcs = result;
 
             _translateToLanguage = navigationService.Session.Settings.Translate.To;
 
@@ -61,26 +72,36 @@ namespace Telegram.Views.Popups
             clientService.Session.Aggregator.Subscribe<UpdateTextCompositionStyles>(this, Handle);
         }
 
+        public FormattedText Result { get; private set; }
+
         private void Handle(UpdateTextCompositionStyles update)
         {
             this.BeginOnUIThread(() =>
             {
-                var style = TabStyleItems.SelectedItem as TextCompositionStyle;
+                // An edited style keeps its name, so what it produced before is stale.
+                if (TabStyleItems.ItemsSource is IList<TextCompositionStyle> previous)
+                {
+                    foreach (var style in update.Styles)
+                    {
+                        var old = previous.FirstOrDefault(x => x.Name == style.Name);
+                        if (old != null && old.Prompt != style.Prompt)
+                        {
+                            _styles.Remove(StyleKey(style.Name, false));
+                            _styles.Remove(StyleKey(style.Name, true));
+                        }
+                    }
+                }
+
+                var selected = TabStyleItems.SelectedItem as TextCompositionStyle;
 
                 TabStyleItems.ItemsSource = update.Styles;
-                TabStyleItems.SelectedItem = update.Styles.FirstOrDefault(x => x.Name == style?.Name);
+                TabStyleItems.SelectedItem = update.Styles.FirstOrDefault(x => x.Name == selected?.Name);
             });
         }
 
         private void OnClosed(ModalPopup sender, ModalPopupClosedEventArgs args)
         {
-            if (_closedExpected)
-            {
-                _closedExpected = false;
-                return;
-            }
-
-            _tcs.TrySetResult(null);
+            Closed -= OnClosed;
             _clientService.Session.Aggregator.Unsubscribe(this);
         }
 
@@ -96,49 +117,45 @@ namespace Telegram.Views.Popups
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
-            if (Navigation.SelectedIndex == 0 && _translations == null)
+            if (Navigation.SelectedIndex == 0 && _translateToName == null)
             {
                 InitializeTranslate();
             }
-            else if (Navigation.SelectedIndex == 2 && _fix == null)
+            else if (Navigation.SelectedIndex == 2 && !_fixRequested)
             {
                 InitializeFix();
             }
         }
 
+        #region Translate
+
         private void InitializeTranslate()
         {
-            _translations = new Dictionary<string, object>();
-
             TabTranslateOriginal.SetText(_clientService, _text);
+            TabTranslateOutput.SetText(_clientService, _text);
 
-            UpdateTranslateLanguage(_navigationService.Session.Settings.Translate.To);
+            _translateToName = new Run();
+
+            var hyperlink = new Hyperlink();
+            hyperlink.Click += TabTranslateLanguage_Click;
+            hyperlink.UnderlineStyle = UnderlineStyle.None;
+            hyperlink.Inlines.Add(_translateToName);
+
+            var format = Strings.AIEditorTo;
+            var index = format.IndexOf("{0}");
+
+            TabTranslateTo.Inlines.Clear();
+            TabTranslateTo.Inlines.Add(format.Substring(0, index));
+            TabTranslateTo.Inlines.Add(hyperlink);
+            TabTranslateTo.Inlines.Add(format.Substring(index + 3));
+
+            UpdateTranslateLanguage(_translateToLanguage);
         }
 
         private void UpdateTranslateLanguage(string languageId)
         {
             _translateToLanguage = languageId;
-
-            var culture = new CultureInfo(languageId);
-
-            var hyperlink = new Hyperlink();
-            hyperlink.Click += TabTranslateLanguage_Click;
-            hyperlink.UnderlineStyle = UnderlineStyle.None;
-            hyperlink.Inlines.Add(culture.DisplayName);
-
-            var info = Strings.AIEditorTo;
-            var index = info.IndexOf("{0}");
-
-            var prefix = info.Substring(0, index);
-            var suffix = info.Substring(index + 3);
-
-            TabTranslateTo.Inlines.Clear();
-            TabTranslateTo.Inlines.Add(prefix);
-            TabTranslateTo.Inlines.Add(hyperlink);
-            TabTranslateTo.Inlines.Add(suffix);
-
-            TabTranslateOutput.ShowHideSkeleton(true);
-            TabTranslateOutput.SetText(_clientService, _text);
+            _translateToName.Text = TranslateService.LanguageName(languageId) ?? languageId;
 
             UpdateTranslate();
         }
@@ -146,54 +163,20 @@ namespace Telegram.Views.Popups
         private void UpdateTranslate()
         {
             var addEmojis = TabTranslateEmoji.IsChecked is true;
-            var styleName = _translateToLanguage + "_" + addEmojis;
+            _translateKey = _translateToLanguage + "_" + addEmojis;
 
-            if (_translations.TryGetValue(styleName, out object result))
-            {
-                if (result is FormattedText text)
-                {
-                    TabTranslateOutput.ShowHideSkeleton(false);
-                    TabTranslateOutput.SetText(_clientService, text);
-                }
-            }
-            else
-            {
-                TabTranslateOutput.ShowHideSkeleton(true);
-                TabTranslateOutput.InvalidateArrange();
-
-                _translations[styleName] = new object();
-                _clientService.Send(new ComposeTextWithAi(_text, _translateToLanguage, string.Empty, addEmojis), result =>
-                {
-                    this.BeginOnUIThread(() =>
-                    {
-                        if (result is FormattedText text)
-                        {
-                            _translations[styleName] = text;
-                            TabTranslateOutput.ShowHideSkeleton(false);
-                            TabTranslateOutput.SetText(_clientService, text);
-                        }
-                        else
-                        {
-                            _translations[styleName] = new MessageTranslateResultError();
-                        }
-                    });
-                });
-            }
+            Compose(_translations, _translateKey, TabTranslateOutput, _translateToLanguage, string.Empty, addEmojis);
         }
 
         private async void TabTranslateLanguage_Click(Hyperlink sender, HyperlinkClickEventArgs args)
         {
-            Hide();
-
             var popup = new TranslateToPopup();
 
-            var confirm = await popup.ShowQueuedAsync(XamlRoot);
+            var confirm = await _navigationService.ShowPopupAsync(popup);
             if (confirm == ContentDialogResult.Primary && popup.SelectedItem != null)
             {
                 UpdateTranslateLanguage(popup.SelectedItem);
             }
-
-            await ShowQueuedAsync(XamlRoot);
         }
 
         private void TabTranslateEmoji_Checked(object sender, RoutedEventArgs e)
@@ -201,34 +184,13 @@ namespace Telegram.Views.Popups
             UpdateTranslate();
         }
 
-        private async void InitializeFix()
+        #endregion
+
+        #region Style
+
+        private static string StyleKey(string name, bool addEmojis)
         {
-            _fix = new object();
-
-            TabFixOriginal.SetText(_clientService, _text);
-
-            TabFixLoading.ShowHideSkeleton(true);
-            TabFixLoading.SetText(_clientService, _text);
-
-            var response = await _clientService.SendAsync(new FixTextWithAi(_text));
-            if (response is FixedText text)
-            {
-                _fix = text;
-
-                TabFixLoading.Visibility = Visibility.Collapsed;
-                // What was taken out is struck through, what was put in is underlined.
-                var entities = new TextEntity[text.DiffText.Entities.Count];
-
-                for (int i = 0; i < entities.Length; i++)
-                {
-                    var diff = text.DiffText.Entities[i];
-                    entities[i] = new TextEntity(diff.Offset, diff.Length, diff.Type is DiffEntityTypeDelete
-                        ? new TextEntityTypeStrikethrough()
-                        : new TextEntityTypeUnderline());
-                }
-
-                TabFixResult.SetText(_clientService, new FormattedText(text.DiffText.Text, entities));
-            }
+            return name + "_" + addEmojis;
         }
 
         private void TabStyleItems_ChoosingItemContainer(ListViewBase sender, ChoosingItemContainerEventArgs args)
@@ -286,20 +248,14 @@ namespace Telegram.Views.Popups
             flyout.ShowAt(sender, args);
         }
 
-        private async void EditStyle(TextCompositionStyle style)
+        private void EditStyle(TextCompositionStyle style)
         {
-            _closedExpected = true;
-            Hide();
-            await _navigationService.ShowPopupAsync(new TextStylePopup(_clientService, _navigationService, style));
-            await ShowQueuedAsync(XamlRoot);
+            _navigationService.ShowPopup(new TextStylePopup(_clientService, _navigationService, style));
         }
 
-        private async void ShareStyle(TextCompositionStyle style)
+        private void ShareStyle(TextCompositionStyle style)
         {
-            _closedExpected = true;
-            Hide();
-            await _navigationService.ShowPopupAsync(new ChooseChatsPopup(), new ChooseChatsConfigurationPostLink(new InternalLinkTypeTextCompositionStyle(style.Name)));
-            await ShowQueuedAsync(XamlRoot);
+            _navigationService.ShowPopup(new ChooseChatsPopup(), new ChooseChatsConfigurationPostLink(new InternalLinkTypeTextCompositionStyle(style.Name)));
         }
 
         private async void DeleteStyle(TextCompositionStyle style)
@@ -318,9 +274,10 @@ namespace Telegram.Views.Popups
             }
         }
 
-        private Dictionary<string, object> _translations;
-        private Dictionary<string, object> _styles = new();
-        private object _fix;
+        private void TabStyleCreate_Click(object sender, RoutedEventArgs e)
+        {
+            _navigationService.ShowPopup(new TextStylePopup(_clientService, _navigationService));
+        }
 
         private void TabStyleItems_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -336,133 +293,201 @@ namespace Telegram.Views.Popups
         {
             if (TabStyleItems.SelectedItem is not TextCompositionStyle style)
             {
+                _styleKey = null;
                 return;
             }
 
             var addEmojis = TabStyleEmoji.IsChecked is true;
-            var styleName = style.Name + "_" + addEmojis;
+            _styleKey = StyleKey(style.Name, addEmojis);
 
-            if (_styles.TryGetValue(styleName, out object result))
+            Compose(_styles, _styleKey, TabStyleOutput, string.Empty, style.Name, addEmojis);
+        }
+
+        #endregion
+
+        private async void Compose(Dictionary<string, FormattedText> results, string key, FormattedTextBlock output, string languageCode, string styleName, bool addEmojis)
+        {
+            if (results.TryGetValue(key, out FormattedText cached))
             {
-                if (result is FormattedText text)
+                ShowResult(output, cached);
+                return;
+            }
+
+            results[key] = null;
+            ShowResult(output, null);
+
+            OnRequestStarted();
+
+            var response = await _clientService.SendAsync(new ComposeTextWithAi(_text, languageCode, styleName, addEmojis));
+            OnRequestCompleted(response);
+
+            // A failure leaves the skeleton up: the toast says why, and the button what to do.
+            if (response is FormattedText text)
+            {
+                results[key] = text;
+
+                // The language, style or emoji toggle may have moved on while this was in flight.
+                var current = results == _translations ? _translateKey : _styleKey;
+                if (key == current)
                 {
-                    TabStyleOutput.ShowHideSkeleton(false);
-                    TabStyleOutput.SetText(_clientService, text);
+                    ShowResult(output, text);
                 }
             }
             else
             {
-                TabStyleOutput.ShowHideSkeleton(true);
-                TabStyleOutput.InvalidateArrange();
-
-                _styles[styleName] = new object();
-                _clientService.Send(new ComposeTextWithAi(_text, string.Empty, style.Name, addEmojis), result =>
-                {
-                    this.BeginOnUIThread(() =>
-                    {
-                        TabStyleState.Text = Strings.AIEditorResult;
-
-                        if (result is FormattedText text)
-                        {
-                            _styles[styleName] = text;
-                            TabStyleOutput.ShowHideSkeleton(false);
-                            TabStyleOutput.SetText(_clientService, text);
-                        }
-                        else
-                        {
-                            _styles[styleName] = new MessageTranslateResultError();
-                        }
-                    });
-                });
+                results.Remove(key);
             }
         }
+
+        private void OnRequestStarted()
+        {
+            _failed = false;
+            UpdatePrimaryButton();
+        }
+
+        private void OnRequestCompleted(Object response)
+        {
+            if (response is Error error)
+            {
+                if (IsLimitError(error))
+                {
+                    _limitReached = true;
+                    _navigationService.ShowToast(string.Format("**{0}**\n{1}", Strings.AIEditorLimitTitle, Strings.AIEditorLimitText), ToastPopupIcon.Premium);
+                }
+                else
+                {
+                    _limitReached = false;
+                    _failed = true;
+                    _navigationService.ShowToast(error);
+                }
+            }
+            else
+            {
+                _limitReached = false;
+            }
+
+            UpdatePrimaryButton();
+        }
+
+        private static bool IsLimitError(Error error)
+        {
+            return string.Equals(error.Message, "AICOMPOSE_FLOOD_PREMIUM", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(error.Message, "SUMMARY_FLOOD_PREMIUM", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void UpdatePrimaryButton()
+        {
+            PrimaryButtonText = _limitReached
+                ? Strings.AIEditorLimitButton
+                : _failed
+                ? Strings.OK
+                : Strings.AIEditorApply;
+        }
+
+        private void ShowResult(FormattedTextBlock output, FormattedText text)
+        {
+            if (text == null)
+            {
+                output.ShowHideSkeleton(true);
+
+                // The skeleton is sized in ArrangeOverride, and the text it covers has not changed.
+                output.InvalidateArrange();
+                return;
+            }
+
+            if (output == TabStyleOutput)
+            {
+                TabStyleState.Text = Strings.AIEditorResult;
+            }
+
+            output.ShowHideSkeleton(false);
+            output.SetText(_clientService, text);
+        }
+
+        #region Fix
+
+        private async void InitializeFix()
+        {
+            _fixRequested = true;
+
+            TabFixOriginal.SetText(_clientService, _text);
+
+            TabFixLoading.Visibility = Visibility.Visible;
+            TabFixLoading.ShowHideSkeleton(true);
+            TabFixLoading.SetText(_clientService, _text);
+
+            OnRequestStarted();
+
+            var response = await _clientService.SendAsync(new FixTextWithAi(_text));
+            OnRequestCompleted(response);
+
+            if (response is FixedText text)
+            {
+                _fix = text;
+
+                TabFixLoading.Visibility = Visibility.Collapsed;
+
+                // What was taken out is struck through, what was put in is underlined.
+                var entities = new TextEntity[text.DiffText.Entities.Count];
+
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var diff = text.DiffText.Entities[i];
+                    entities[i] = new TextEntity(diff.Offset, diff.Length, diff.Type is DiffEntityTypeDelete
+                        ? new TextEntityTypeStrikethrough()
+                        : new TextEntityTypeUnderline());
+                }
+
+                TabFixResult.SetText(_clientService, new FormattedText(text.DiffText.Text, entities));
+            }
+            else
+            {
+                // Coming back to the tab asks again.
+                _fixRequested = false;
+            }
+        }
+
+        #endregion
 
         private void OnPrimaryButtonClick(ModalPopup sender, ModalPopupButtonClickEventArgs args)
         {
-            if (Navigation.SelectedIndex == 0)
+            if (_limitReached)
             {
-                var addEmojis = TabTranslateEmoji.IsChecked is true;
-                var styleName = _translateToLanguage + "_" + addEmojis;
-
-                if (_translations.TryGetValue(styleName, out object result))
-                {
-                    if (result is FormattedText text)
-                    {
-                        _tcs.TrySetResult(text);
-                        return;
-                    }
-                }
+                args.Cancel = true;
+                _navigationService.ShowPromo(new PremiumFeatureTextComposition());
+                return;
             }
-            else if (Navigation.SelectedIndex == 1)
+            else if (_failed)
             {
-                if (TabStyleItems.SelectedItem is not TextCompositionStyle style)
-                {
-                    return;
-                }
-
-                var addEmojis = TabStyleEmoji.IsChecked is true;
-                var styleName = style.Name + "_" + addEmojis;
-
-                if (_styles.TryGetValue(styleName, out object result))
-                {
-                    if (result is FormattedText text)
-                    {
-                        _tcs.TrySetResult(text);
-                        return;
-                    }
-                }
-            }
-            else if (Navigation.SelectedIndex == 2)
-            {
-                if (_fix is FixedText text)
-                {
-                    _tcs.TrySetResult(text.Text);
-                    return;
-                }
+                return;
             }
 
-            args.Cancel = true;
+            var result = Navigation.SelectedIndex switch
+            {
+                0 => GetResult(_translations, _translateKey),
+                1 => GetResult(_styles, _styleKey),
+                2 => _fix?.Text,
+                _ => null
+            };
+
+            if (result != null)
+            {
+                Result = result;
+            }
+            else
+            {
+                args.Cancel = true;
+            }
         }
 
-        private async void TabStyleCreate_Click(object sender, RoutedEventArgs e)
+        private static FormattedText GetResult(Dictionary<string, FormattedText> results, string key)
         {
-            _closedExpected = true;
-            Hide();
-
-            await _navigationService.ShowPopupAsync(new TextStylePopup(_clientService, _navigationService));
-            await ShowQueuedAsync(XamlRoot);
-        }
-    }
-
-    public partial class TabStylePanel : Panel
-    {
-        protected override Size MeasureOverride(Size availableSize)
-        {
-            var maxWidth = 0d;
-            var maxHeight = 0d;
-
-            foreach (var child in Children)
+            if (key != null && results.TryGetValue(key, out FormattedText text))
             {
-                child.Measure(new Size(float.PositiveInfinity, float.PositiveInfinity));
-                maxWidth = Math.Max(maxWidth, child.DesiredSize.Width);
-                maxHeight = Math.Max(maxHeight, child.DesiredSize.Height);
+                return text;
             }
 
-            return new Size((float)Math.Max(availableSize.Width, maxWidth * Children.Count), (float)maxHeight);
-        }
-
-        protected override Size ArrangeOverride(Size finalSize)
-        {
-            var width = finalSize.Width / Children.Count;
-            var x = 0d;
-
-            foreach (var child in Children)
-            {
-                child.Arrange(new Rect((float)x, 0, width, finalSize.Height));
-                x += width;
-            }
-
-            return finalSize;
+            return null;
         }
     }
 }

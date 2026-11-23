@@ -4157,19 +4157,15 @@ namespace Telegram.ViewModels
 
         public async void OpenTextEditor()
         {
-            var text = GetFormattedText();
+            var popup = new TextEditorPopup(ClientService, NavigationService, GetFormattedText());
 
-            var tcs = new TaskCompletionSource<FormattedText>();
-            var popup = new TextEditorPopup(ClientService, NavigationService, text, tcs);
-
-            await ShowPopupAsync(popup);
-            text = await tcs.Task;
+            var confirm = await ShowPopupAsync(popup);
 
             TextField?.FocusInput(FocusState.Keyboard);
 
-            if (text != null)
+            if (confirm == ContentDialogResult.Primary && popup.Result != null)
             {
-                SetFormattedText(text);
+                SetFormattedText(popup.Result);
             }
         }
 
