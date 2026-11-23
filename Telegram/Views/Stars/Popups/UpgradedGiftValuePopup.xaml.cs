@@ -65,9 +65,9 @@ namespace Telegram.Views.Stars.Popups
                 LastPriceRoot.Visibility = Visibility.Collapsed;
             }
 
-            if (valueInfo.MinimumPrice != 0)
+            if (valueInfo.MinPrice != 0)
             {
-                MinimumPrice.Text = Locale.FormatCurrency(valueInfo.MinimumPrice, valueInfo.Currency);
+                MinimumPrice.Text = Locale.FormatCurrency(valueInfo.MinPrice, valueInfo.Currency);
             }
             else
             {
@@ -120,7 +120,7 @@ namespace Telegram.Views.Stars.Popups
 
         private void MinimumPriceInfo_Click(object sender, RoutedEventArgs e)
         {
-            ToastPopup.Show(MinimumPriceInfo, string.Format(Strings.GiftValueMinPriceInfo, Locale.FormatCurrency(_valueInfo.MinimumPrice, _valueInfo.Currency), _gift.Title), ToastPlacementMode.Top);
+            ToastPopup.Show(MinimumPriceInfo, string.Format(Strings.GiftValueMinPriceInfo, Locale.FormatCurrency(_valueInfo.MinPrice, _valueInfo.Currency), _gift.Title), ToastPlacementMode.Top);
         }
 
         private void AveragePriceInfo_Click(object sender, RoutedEventArgs e)

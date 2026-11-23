@@ -747,7 +747,7 @@ namespace Telegram.Views.Stars.Popups
 
         private void InitializeResaleStarCount(long regularGiftId)
         {
-            _clientService.Send(new SearchGiftsForResale(regularGiftId, new GiftForResaleOrderPrice(), false, false, Array.Empty<UpgradedGiftAttributeId>(), string.Empty, 1), result =>
+            _clientService.Send(new SearchGiftsForResale(regularGiftId, new GiftForResaleOrderPrice(), false, false, false, false, Array.Empty<UpgradedGiftAttributeId>(), string.Empty, 1), result =>
             {
                 if (result is GiftsForResale gifts && gifts.Gifts.Count > 0)
                 {
@@ -929,7 +929,7 @@ namespace Telegram.Views.Stars.Popups
                 var id = _gift.ReceivedGiftId;
 
                 _gift.ReceivedGiftId = result.ReceivedGiftId;
-                _gift.ExportDate = result.ExportDate;
+                _gift.MintDate = result.MintDate;
                 _gift.NextResaleDate = result.NextResaleDate;
                 _gift.NextTransferDate = result.NextTransferDate;
                 _gift.DropOriginalDetailsStarCount = result.DropOriginalDetailsStarCount;

@@ -384,7 +384,7 @@ namespace Telegram.Views.Stars.Popups
             var totalCount = 0u;
             var hasMoreItems = false;
 
-            var response = await _clientService.SendAsync(new SearchGiftsForResale(_giftId, _order, _forCrafting, _forStars, _attributes, _nextOffset, 24));
+            var response = await _clientService.SendAsync(new SearchGiftsForResale(_giftId, _order, _forCrafting, _forStars, false, false, _attributes, _nextOffset, 24));
             if (response is GiftsForResale gifts)
             {
                 foreach (var gift in gifts.Gifts)

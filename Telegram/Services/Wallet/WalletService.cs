@@ -1154,6 +1154,7 @@ namespace Telegram.Services.Wallet
                 transaction.PeerDomain,
                 transaction.Date,
                 transaction.FeeAmount,
+                transaction.IsSuspectedSpam,
                 state,
                 type);
         }
@@ -3145,6 +3146,7 @@ namespace Telegram.Services.Wallet
                 peerDomain ?? string.Empty,
                 (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 0,
+                false,
                 new TonWalletTransactionStatePending(operationId, string.Empty, (int)validUntil),
                 new TonWalletTransactionTypeTransfer(
                     -(long)amountNanograms,
@@ -3489,6 +3491,7 @@ namespace Telegram.Services.Wallet
                             pending.PeerDomain,
                             pending.Date,
                             pending.FeeAmount,
+                            pending.IsSuspectedSpam,
                             new TonWalletTransactionStateFailed(),
                             pending.Type);
 

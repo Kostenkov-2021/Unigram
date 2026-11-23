@@ -1170,7 +1170,7 @@ namespace Telegram.Views.Popups
             }
 
             // An export date of 0 means the gift cannot go to the blockchain at all.
-            if (ViewModel.Configuration is ChooseChatsConfigurationTransferGift { Gift: { ExportDate: > 0, Gift: SentGiftUpgraded } })
+            if (ViewModel.Configuration is ChooseChatsConfigurationTransferGift { Gift: { MintDate: > 0, Gift: SentGiftUpgraded } })
             {
                 var wallet = ViewModel.ClientService.Options.CanUseTonWallet;
                 var button = new SettingsButton

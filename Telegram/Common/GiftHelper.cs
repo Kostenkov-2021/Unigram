@@ -30,9 +30,9 @@ namespace Telegram.Common
             }
 
             var now = DateTime.Now.ToUnixTimeSeconds();
-            if (now < gift.ExportDate)
+            if (now < gift.MintDate)
             {
-                var days = (int)Math.Ceiling((gift.ExportDate - now) / 86400d);
+                var days = (int)Math.Ceiling((gift.MintDate - now) / 86400d);
                 await navigation.ShowPopupAsync(Locale.Declension(Strings.R.Gift2ExportTONUnlocksAlertText, days), Strings.Gift2ExportTONUnlocksAlertTitle, Strings.OK);
                 return;
             }
@@ -78,7 +78,7 @@ namespace Telegram.Common
 
             if (wallet)
             {
-                var response = await clientService.SendAsync(new WithdrawUpgradedGift(gift.ReceivedGiftId, keepOnProfile));
+                var response = await clientService.SendAsync(new MintGift(gift.ReceivedGiftId, keepOnProfile));
                 if (response is Ok)
                 {
                     // Kept on the profile, it is still among the received gifts.
@@ -96,7 +96,7 @@ namespace Telegram.Common
             }
             else
             {
-                var response = await clientService.SendAsync(new GetUpgradedGiftWithdrawalUrl(gift.ReceivedGiftId));
+                var response = await clientService.SendAsync(new GetGiftMintingUrl(gift.ReceivedGiftId));
                 if (response is HttpUrl httpUrl)
                 {
                     MessageHelper.OpenUrl(null, null, httpUrl.Url);

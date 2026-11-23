@@ -95,7 +95,7 @@ namespace Telegram.ViewModels.Profile
             cached.DropOriginalDetailsStarCount = gift.DropOriginalDetailsStarCount;
             cached.NextTransferDate = gift.NextTransferDate;
             cached.NextResaleDate = gift.NextResaleDate;
-            cached.ExportDate = gift.ExportDate;
+            cached.MintDate = gift.MintDate;
             cached.PrepaidUpgradeHash = gift.PrepaidUpgradeHash;
             cached.CraftDate = gift.CraftDate;
         }

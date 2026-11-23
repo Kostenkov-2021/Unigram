@@ -1,19 +1,19 @@
-From 0b2cbf6725a91128155ab25ea7a5d12694771411 Mon Sep 17 00:00:00 2001
+From 538468c69c3aaec9d5231fb83653e7ee4d8314c5 Mon Sep 17 00:00:00 2001
 From: Fela <frayx@live.it>
 Date: Sat, 5 Sep 2026 17:47:20 +0400
 Subject: [PATCH] Replace @extra with a request identifier, drop the old JSON
  interface
 
 ---
- td/telegram/ClientJson.cpp     | 86 +++++-----------------------------
+ td/telegram/ClientJson.cpp     | 88 +++++-----------------------------
  td/telegram/ClientJson.h       | 26 +---------
  td/telegram/td_json_client.cpp | 28 ++---------
  td/telegram/td_json_client.h   | 80 +------------------------------
  tdclientjson_export_list       |  5 --
- 5 files changed, 19 insertions(+), 206 deletions(-)
+ 5 files changed, 20 insertions(+), 207 deletions(-)
 
 diff --git a/td/telegram/ClientJson.cpp b/td/telegram/ClientJson.cpp
-index a8e93ec18..ab0abdf91 100644
+index 19e0aa8b9..17ea20ffa 100644
 --- a/td/telegram/ClientJson.cpp
 +++ b/td/telegram/ClientJson.cpp
 @@ -10,7 +10,6 @@
@@ -24,7 +24,7 @@ index a8e93ec18..ab0abdf91 100644
  #include "td/utils/JsonBuilder.h"
  #include "td/utils/port/thread_local.h"
  #include "td/utils/SliceBuilder.h"
-@@ -53,110 +52,47 @@ static std::pair<td_api::object_ptr<td_api::Function>, string> to_request(Slice
+@@ -54,116 +53,53 @@ static std::pair<td_api::object_ptr<td_api::Function>, string> to_request(Slice
    return std::make_pair(std::move(func), std::move(extra));
  }
  
@@ -32,6 +32,13 @@ index a8e93ec18..ab0abdf91 100644
 +static TD_THREAD_LOCAL string *current_output;
 +
 +static const char *store_response(const td_api::Object &object) {
+   if (object.get_id() == td_api::error::ID) {
+     const auto &error = static_cast<const td_api::error &>(object);
+     if (!check_utf8(error.message_)) {
+-      return from_response(td_api::error(error.code_, "Strings must be encoded in UTF-8"), extra, client_id);
++      return store_response(td_api::error(error.code_, "Strings must be encoded in UTF-8"));
+     }
+   }
    auto buf = StackAllocator::alloc(1 << 18);
    JsonBuilder jb(StringBuilder(buf.as_slice(), true), -1);
    jb.enter_value() << ToJson(object);

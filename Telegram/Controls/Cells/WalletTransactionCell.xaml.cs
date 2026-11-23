@@ -41,6 +41,8 @@ namespace Telegram.Controls.Cells
             _received = Resources["AmountReceivedBrush"] as Brush;
         }
 
+        // TODO: is_suspected_spam is neither shown nor filtered, and the nine
+        // tonWalletTransactionTypeTelegramGift* types have no row of their own yet.
         public void UpdateInfo(IClientService clientService, TonWalletTransaction transaction)
         {
             var transfer = transaction.Type as TonWalletTransactionTypeTransfer;

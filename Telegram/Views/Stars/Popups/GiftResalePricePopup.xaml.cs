@@ -86,11 +86,11 @@ namespace Telegram.Views.Stars.Popups
                 if (_gram)
                 {
                     var starCount = stars > 0 ? (long)Math.Round(_value * grams * 1000 / 1000000 / stars) : 0;
-                    return new GiftResaleParameters(starCount, _value, true);
+                    return new GiftResaleParameters(starCount, _value, 0, true, false, false);
                 }
 
                 var gramCentCount = grams > 0 ? (long)Math.Round(_value * stars / 1000 * 1000000 / grams) : 0;
-                return new GiftResaleParameters(_value, gramCentCount, false);
+                return new GiftResaleParameters(_value, gramCentCount, 0, false, false, false);
             }
         }
 
