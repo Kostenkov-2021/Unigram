@@ -529,12 +529,11 @@ namespace Telegram.Controls.Stories
             }
         }
 
-        // The 4 under the search box is inside the tabs' 40 and is the banner's own top margin,
-        // so it stands on its own only when neither is there.
+        // Each island is 4 below the one above it: the tabs carry theirs, 4 plus 32, and so does the
+        // banner as its top margin. The list sits directly on whichever is last.
         private double GetPadding(bool tabs)
         {
-            var padding = (tabs ? 40 : 0) + BannerHeight;
-            return padding > 0 ? padding : 4;
+            return (tabs ? 36 : 0) + BannerHeight;
         }
 
         public double GetTopPadding(bool collapsed)

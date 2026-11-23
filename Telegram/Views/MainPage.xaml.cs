@@ -902,6 +902,8 @@ namespace Telegram.Views
             _bannerHeight = height;
             Stories.BannerHeight = height;
 
+            UpdateTopicListMargin();
+
             var visual = ElementComposition.GetElementVisual(ChatsList);
 
             if (animate)
@@ -1200,14 +1202,7 @@ namespace Telegram.Views
             _tabsTopCollapsed = !show;
             FindName(nameof(ChatTabs));
 
-            if (TopicListPresenter != null)
-            {
-                var padding = ChatTabs != null
-                    ? _tabsTopCollapsed ? -74 : -78
-                    : -12;
-
-                TopicListPresenter.Margin = new Thickness(72, padding, 0, 0);
-            }
+            UpdateTopicListMargin();
 
             Stories.TabsTopCollapsed = !show;
             Stories.ChatTabs = ChatTabs;
@@ -1268,6 +1263,17 @@ namespace Telegram.Views
             visual.StartAnimation("Offset.Y", offset1);
 
             batch.End();
+        }
+
+        // The topic list starts below the header, which keeps the empty panel's 4 px top margin,
+        // while the chat list does not count it.
+        private void UpdateTopicListMargin()
+        {
+            if (TopicListPresenter != null)
+            {
+                var top = _bannerHeight == 0 ? -82 : -78;
+                TopicListPresenter.Margin = new Thickness(72, top, 0, 0);
+            }
         }
 
         private void ShowHideLeftTabs(bool show)
@@ -4272,11 +4278,7 @@ namespace Telegram.Views
                 ViewModel.Topics.SetChat(null);
             }
 
-            var padding = ChatTabs != null
-                ? _tabsTopCollapsed ? -74 : -78
-                : -78;
-
-            TopicListPresenter.Margin = new Thickness(72, padding, 0, 0);
+            UpdateTopicListMargin();
 
             void ShowHideTopicListCompleted()
             {
