@@ -11103,6 +11103,8 @@
 
 
     <string name="ViewDetails">VIEW CONTACT</string>
+    <string name="SharedContactAdd">ADD</string>
+    <string name="SharedContactMessage">MESSAGE</string>
     <string name="ViewReplies_zero">View {0} Replies</string>
     <string name="ViewReplies_two">View {0} Replies</string>
     <string name="ViewReplies_few">View {0} Replies</string>
