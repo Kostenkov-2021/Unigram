@@ -520,7 +520,7 @@ namespace Telegram.Views.Popups
             UpdatePrimaryButton();
         }
 
-        private static bool IsLimitError(Error error)
+        public static bool IsLimitError(Error error)
         {
             return string.Equals(error.Message, "AICOMPOSE_FLOOD_PREMIUM", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(error.Message, "SUMMARY_FLOOD_PREMIUM", StringComparison.OrdinalIgnoreCase);

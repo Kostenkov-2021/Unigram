@@ -84,6 +84,7 @@ namespace Telegram.ViewModels
                 .Subscribe<UpdateChatEmojiStatus>(Handle)
                 .Subscribe<UpdateChatTheme>(Handle)
                 .Subscribe<UpdateChatBackground>(Handle)
+                .Subscribe<UpdateChatTextCompositionParameters>(Handle)
                 .Subscribe<UpdateChatNotificationSettings>(Handle)
                 .Subscribe<UpdateChatOnlineMemberCount>(Handle)
                 .Subscribe<UpdateChatVideoChat>(Handle)
@@ -413,6 +414,14 @@ namespace Telegram.ViewModels
             if (update.ChatId == _chat?.Id)
             {
                 BeginOnUIThread(() => Delegate?.UpdateChatTheme(_chat));
+            }
+        }
+
+        public void Handle(UpdateChatTextCompositionParameters update)
+        {
+            if (update.ChatId == _chat?.Id)
+            {
+                BeginOnUIThread(() => Delegate?.UpdateChatTextCompositionParameters(_chat));
             }
         }
 

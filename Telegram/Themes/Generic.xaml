@@ -8361,6 +8361,24 @@
                                  Width="32"
                                  Height="32" />
 
+                        <Grid x:Name="StarsRoot"
+                              Visibility="Collapsed"
+                              IsHitTestVisible="False"
+                              CornerRadius="16"
+                              Width="32"
+                              Height="32">
+                            <!-- Not viewport aware: ChatView shows and hides the button by scaling its
+                                 visual from and to 0, and XAML's effective viewport walk faults in
+                                 TransformRect on a transform it cannot invert. So nothing reports it
+                                 entering the viewport, and it has to play on its own. -->
+                            <local:AnimatedImage x:Name="Stars"
+                                                 AutoPlay="True"
+                                                 FrameSize="0,0"
+                                                 ResizeMode="Fill"
+                                                 DecodeFrameType="Logical"
+                                                 Stretch="UniformToFill" />
+                        </Grid>
+
                         <TextBlock x:Name="ContentPresenter"
                                    Margin="{TemplateBinding Padding}"
                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -8374,6 +8392,16 @@
                                    VerticalAlignment="Center"
                                    Style="{StaticResource InfoCaptionTextBlockStyle}"
                                    Visibility="Collapsed" />
+
+                        <!-- 2 px inside ContentBackground: the stroke is drawn within the bounds. -->
+                        <local:ProgressRingIndeterminate x:Name="RewriteRing"
+                                                         Visibility="Collapsed"
+                                                         IsHitTestVisible="False"
+                                                         Stroke="#FFFFFF"
+                                                         Fill="Transparent"
+                                                         StrokeThickness="2.5"
+                                                         Width="28"
+                                                         Height="28" />
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>

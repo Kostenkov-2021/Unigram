@@ -175,7 +175,9 @@ namespace Telegram.Views
 
             _composer = new ComposerController(TextField, TextField)
             {
-                ListAutocomplete = ListAutocomplete
+                ListAutocomplete = ListAutocomplete,
+                SendButton = btnSendMessage,
+                Transition = TextFieldTransition
             };
 
             ((IFormattedTextInput)TextField).ContentChanged += TextField_ContentChanged;
@@ -6099,6 +6101,7 @@ namespace Telegram.Views
             UpdateChatMessageAutoDeleteTime(chat);
             UpdateChatPermissions(chat);
             UpdateChatTheme(chat);
+            UpdateChatTextCompositionParameters(chat);
             UpdateChatBusinessBotManageBar(chat, chat.BusinessBotManageBar);
 
             if (_composer.Effect != null)
@@ -6230,6 +6233,11 @@ namespace Telegram.Views
                 PhotoAlias.Source = ProfilePictureSource.MessageSender(ViewModel.ClientService, defaultMessageSenderId);
                 ShowHideSideButton(SideButton.Alias);
             }
+        }
+
+        public void UpdateChatTextCompositionParameters(Chat chat)
+        {
+            btnSendMessage.HasTextComposition = chat.TextCompositionParameters != null;
         }
 
         public async void UpdateChatTheme(Chat chat)

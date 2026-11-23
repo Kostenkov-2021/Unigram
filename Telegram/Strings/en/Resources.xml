@@ -14000,6 +14000,7 @@
     <string name="AIEditorEmojify">emojify</string>
     <string name="AIEditorAlwaysUse">Always use in this chat</string>
     <string name="AIEditorAlwaysUseInfo">Every message you send in this chat will be rewritten with these settings.</string>
+    <string name="AIEditorSendFailed">Couldn\'t rewrite the message. It wasn\'t sent.</string>
     <string name="AIEditorStyleText">Add this style to instantly\nrewrite your messages.</string>
     <string name="AIEditorBefore">Before</string>
     <string name="AIEditorAfter">After</string>

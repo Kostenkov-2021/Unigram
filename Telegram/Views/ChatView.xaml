@@ -1373,6 +1373,12 @@
                                 <contents:InstantContent x:Name="DraftField"
                                                          Margin="38,13,0,10"
                                                          MaxHeight="192" />
+
+                                <!-- Reaching above the field: the dust of the text it replaces rises. -->
+                                <chats:ComposerRewriteTransition x:Name="TextFieldTransition"
+                                                                 Accent="{ThemeResource MessageAccentBrush}"
+                                                                 IsHitTestVisible="False"
+                                                                 Margin="0,-48,0,0" />
                             </Grid>
                             <Border x:Name="btnAttach"
                                     Grid.Column="1"
