@@ -1630,14 +1630,17 @@
                     <chats:ChatBottomButton x:Name="ButtonAction"
                                             LosingFocus="ButtonAction_LosingFocus"
                                             Click="{x:Bind ViewModel.Action}"
+                                            FontFamily="{ThemeResource EmojiThemeFontFamilyWithSymbols}"
                                             Height="{StaticResource TelegramToolBarHeight}">
                         <TextBlock />
                     </chats:ChatBottomButton>
+                    <chats:ChatStartButton x:Name="ButtonStart"
+                                           Click="{x:Bind ViewModel.Action}"
+                                           Visibility="Collapsed" />
                     <controls:GlyphButton x:Name="ButtonFeedback"
                                           Click="ButtonFeedback_Click"
                                           AutomationProperties.Name="{CustomResource SendDirectMessage}"
                                           ToolTipService.ToolTip="{CustomResource SendDirectMessage}"
-                                          Foreground="{ThemeResource TelegramForegroundAccentBrush}"
                                           HorizontalAlignment="Left"
                                           Glyph="&#xE954;"
                                           FontSize="24"
@@ -1646,9 +1649,16 @@
                                           Click="ButtonGift_Click"
                                           AutomationProperties.Name="{CustomResource SendAGift}"
                                           ToolTipService.ToolTip="{CustomResource SendAGift}"
-                                          Foreground="{ThemeResource TelegramForegroundAccentBrush}"
                                           HorizontalAlignment="Right"
                                           Glyph="&#xEABB;"
+                                          FontSize="24"
+                                          Visibility="Collapsed" />
+                    <controls:GlyphButton x:Name="ButtonGigagroupInfo"
+                                          Click="ButtonGigagroupInfo_Click"
+                                          AutomationProperties.Name="{CustomResource BroadcastGroupInfo}"
+                                          ToolTipService.ToolTip="{CustomResource BroadcastGroupInfo}"
+                                          HorizontalAlignment="Right"
+                                          Glyph="&#xEA8C;"
                                           FontSize="24"
                                           Visibility="Collapsed" />
                 </Grid>

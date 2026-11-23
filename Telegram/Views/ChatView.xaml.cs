@@ -5793,7 +5793,21 @@ namespace Telegram.Views
                 return;
             }
 
+            // Only a change within the same chat animates: Activate clears the previous state.
+            var animated = _footer != null;
             _footer = state;
+
+            ButtonAction.SetAppearance(state.Kind switch
+            {
+                ChatFooterKind.AccentButton => ChatBottomButtonAppearance.Accent,
+                _ when state.Action == ChatFooterAction.Boost => ChatBottomButtonAppearance.AccentText,
+                _ when state.Action == ChatFooterAction.Frozen => ChatBottomButtonAppearance.AccentWash,
+                _ => ChatBottomButtonAppearance.Default
+            }, animated);
+
+            ButtonStart.Visibility = state.Kind == ChatFooterKind.StartButton && !FromPreview
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
             if (FromPreview)
             {
@@ -5808,6 +5822,10 @@ namespace Telegram.Views
             else if (state.Action == ChatFooterAction.Frozen)
             {
                 ShowFrozen();
+            }
+            else if (state.Kind == ChatFooterKind.StartButton)
+            {
+                ShowStart(state.Text);
             }
             else if (state.Kind == ChatFooterKind.Link)
             {
@@ -5913,6 +5931,30 @@ namespace Telegram.Views
             _replyEnabled = false;
             ButtonAction.IsEnabled = false;
             ButtonAction.Content = textBlock;
+
+            _actionCollapsed = false;
+            ButtonAction.Visibility = Visibility.Visible;
+            ChatFooter.Visibility = Visibility.Visible;
+            TextArea.Visibility = Visibility.Collapsed;
+        }
+
+        // The side buttons are laid over the bar, 48 wide, so the fill stops short of them.
+        private void UpdateAccentMargin()
+        {
+            var left = ButtonFeedback.Visibility == Visibility.Visible ? 48 : 0;
+            var right = ButtonGift.Visibility == Visibility.Visible || ButtonGigagroupInfo.Visibility == Visibility.Visible ? 48 : 0;
+
+            ButtonAction.AccentMargin = new Thickness(4 + left, 4, 4 + right, 4);
+        }
+
+        // The pill sits on the bar, which stays as its background and takes no clicks of its own.
+        private void ShowStart(string text)
+        {
+            ButtonStart.Content = text;
+            ButtonAction.Content = null;
+
+            _replyEnabled = false;
+            ButtonAction.IsEnabled = false;
 
             _actionCollapsed = false;
             ButtonAction.Visibility = Visibility.Visible;
@@ -7220,9 +7262,16 @@ namespace Telegram.Views
                 ComposerHeaderCancel.CornerRadius =
                 ButtonFeedback.CornerRadius =
                 ButtonGift.CornerRadius =
+                ButtonGigagroupInfo.CornerRadius =
                 ButtonManage.CornerRadius =
                 ButtonForward.CornerRadius =
                 ButtonDelete.CornerRadius = button;
+
+            // The bar's accent fill and the start pill are inset 4 from its edges.
+            var pill = Math.Max(0, button.TopLeft - 4);
+
+            ButtonAction.AccentRadius = pill;
+            ButtonStart.CornerRadius = new CornerRadius(pill);
 
             // The quoted message is a strip, not a button, and a full radius would make it a pill. Its
             // left side carries the accent line, so it keeps a quote's 4 there.
@@ -7390,6 +7439,8 @@ namespace Telegram.Views
             ButtonFeedback.Visibility = Visibility.Collapsed;
             ButtonGift.Visibility = Visibility.Collapsed;
             ButtonSuggest.Visibility = Visibility.Collapsed;
+            ButtonGigagroupInfo.Visibility = Visibility.Collapsed;
+            UpdateAccentMargin();
 
             if (fullInfo == null)
             {
@@ -7511,6 +7562,8 @@ namespace Telegram.Views
             ButtonFeedback.Visibility = Visibility.Collapsed;
             ButtonGift.Visibility = Visibility.Collapsed;
             ButtonSuggest.Visibility = Visibility.Collapsed;
+            ButtonGigagroupInfo.Visibility = Visibility.Collapsed;
+            UpdateAccentMargin();
 
             if (fullInfo == null)
             {
@@ -7576,6 +7629,10 @@ namespace Telegram.Views
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
+            ButtonGigagroupInfo.Visibility = group.IsBroadcastGroup && ViewModel.Type is DialogType.History or DialogType.Thread
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
             if (group.IsChannel)
             {
                 if (fullInfo == null)
@@ -7589,12 +7646,15 @@ namespace Telegram.Views
                         : Visibility.Collapsed;
                 }
 
+                UpdateAccentMargin();
                 return;
             }
             else
             {
                 ButtonGift.Visibility = Visibility.Collapsed;
             }
+
+            UpdateAccentMargin();
 
             UpdateComposerHeader(chat, ViewModel.ComposerHeader);
             UpdateChatPermissions(chat);
@@ -8861,6 +8921,11 @@ namespace Telegram.Views
         private void ButtonGift_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.GiftPremium();
+        }
+
+        private void ButtonGigagroupInfo_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.ShowToast(Strings.BroadcastGroupInfo, ToastPopupIcon.Info);
         }
 
         private void Suggest_Click(object sender, RoutedEventArgs e)

@@ -7,6 +7,7 @@
 
 using System;
 using Telegram.Common;
+using Telegram.Controls.Media;
 using Telegram.Converters;
 using Telegram.Td.Api;
 using Telegram.Views.Popups;
@@ -266,7 +267,7 @@ namespace Telegram.ViewModels
             }
             else if (user.Type is UserTypeBot && (_accessToken != null || chat.LastMessage == null))
             {
-                return new ChatFooterState(ChatFooterKind.StartButton, ChatFooterAction.Start, Strings.BotStart);
+                return new ChatFooterState(ChatFooterKind.StartButton, ChatFooterAction.Start, Strings.BotStart2);
             }
             else if (user.Type is UserTypeDeleted)
             {
@@ -396,7 +397,7 @@ namespace Telegram.ViewModels
             }
             else if (Type == DialogType.Thread && ForumTopic is ForumTopic { Info.IsClosed: true } forumTopic && !CanManageTopic(group, forumTopic))
             {
-                return Bar(ChatFooterState.Info(Strings.TopicClosedByAdmin));
+                return Bar(ChatFooterState.Info(Icons.LockClosedFilled14 + Icons.Spacing + Strings.TopicClosedByAdmin));
             }
 
             if (!group.IsChannel && !group.IsBroadcastGroup && !administrator && !IsUnrestrictedByBoosts(fullInfo))
@@ -407,7 +408,7 @@ namespace Telegram.ViewModels
                     if (!chat.Permissions.CanSendBasicMessages)
                     {
                         return fullInfo?.UnrestrictBoostCount > 0
-                            ? ChatFooterState.Button(ChatFooterAction.Boost, Strings.BoostingBoostToSendMessages)
+                            ? ChatFooterState.Button(ChatFooterAction.Boost, Icons.Boosts + Icons.Spacing + Strings.BoostingBoostToSendMessages)
                             : ChatFooterState.Info(Strings.GlobalSendMessageRestricted);
                     }
                     else if (restricted != null)

@@ -7727,9 +7727,9 @@
 
     <Style TargetType="chats:ChatBottomButton">
         <Setter Property="Foreground"
-                Value="{ThemeResource TelegramForegroundAccentBrush}" />
+                Value="{ThemeResource ButtonForeground}" />
         <Setter Property="Background"
-                Value="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
+                Value="{ThemeResource PageSubHeaderBackgroundBrush2}" />
         <Setter Property="Padding"
                 Value="0,0,0,2" />
         <Setter Property="HorizontalAlignment"
@@ -7755,20 +7755,18 @@
                                 <VisualState x:Name="Normal" />
                                 <VisualState x:Name="PointerOver">
                                     <Storyboard>
-                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Background"
-                                                                       Storyboard.TargetName="RootGrid">
-                                            <DiscreteObjectKeyFrame KeyTime="0"
-                                                                    Value="{ThemeResource NavigationViewItemBackgroundPointerOver}" />
-                                        </ObjectAnimationUsingKeyFrames>
+                                        <DoubleAnimation Storyboard.TargetName="PointerOverOverlay"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="0" />
                                     </Storyboard>
                                 </VisualState>
                                 <VisualState x:Name="Pressed">
                                     <Storyboard>
-                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Background"
-                                                                       Storyboard.TargetName="RootGrid">
-                                            <DiscreteObjectKeyFrame KeyTime="0"
-                                                                    Value="{ThemeResource NavigationViewItemBackgroundPressed}" />
-                                        </ObjectAnimationUsingKeyFrames>
+                                        <DoubleAnimation Storyboard.TargetName="PressedOverlay"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="0" />
                                     </Storyboard>
                                 </VisualState>
                                 <VisualState x:Name="Disabled">
@@ -7786,29 +7784,163 @@
                                     </Storyboard>
                                 </VisualState>
                             </VisualStateGroup>
+                            <!-- Setters, not storyboards: Disabled animates the same Foreground, and only an
+                                 animated value wins over a setter, which is what lets the disabled grey show. -->
+                            <VisualStateGroup x:Name="AppearanceStates">
+                                <VisualStateGroup.Transitions>
+                                    <VisualTransition GeneratedDuration="0:0:0.32">
+                                        <VisualTransition.GeneratedEasingFunction>
+                                            <QuinticEase EasingMode="EaseOut" />
+                                        </VisualTransition.GeneratedEasingFunction>
+                                    </VisualTransition>
+                                </VisualStateGroup.Transitions>
+                                <VisualState x:Name="Default" />
+                                <VisualState x:Name="Accent">
+                                    <VisualState.Setters>
+                                        <Setter Target="ContentPresenter1.Foreground"
+                                                Value="{ThemeResource AccentButtonForeground}" />
+                                        <Setter Target="ContentPresenter2.Foreground"
+                                                Value="{ThemeResource AccentButtonForeground}" />
+                                    </VisualState.Setters>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="AccentBackground"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="0" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="AccentText">
+                                    <VisualState.Setters>
+                                        <Setter Target="ContentPresenter1.Foreground"
+                                                Value="{ThemeResource TelegramForegroundAccentBrush}" />
+                                        <Setter Target="ContentPresenter2.Foreground"
+                                                Value="{ThemeResource TelegramForegroundAccentBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="AccentWash">
+                                    <VisualState.Setters>
+                                        <Setter Target="OverlayHost.Opacity"
+                                                Value="0.05" />
+                                        <Setter Target="PointerOverOverlay.Background"
+                                                Value="{ThemeResource TelegramForegroundAccentBrush}" />
+                                        <Setter Target="PressedOverlay.Background"
+                                                Value="{ThemeResource TelegramForegroundAccentBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
                         </VisualStateManager.VisualStateGroups>
-                        <Grid x:Name="RootGrid">
-                            <ContentPresenter x:Name="ContentPresenter1"
-                                              AutomationProperties.AccessibilityView="Raw"
-                                              BorderBrush="{TemplateBinding BorderBrush}"
-                                              BorderThickness="{TemplateBinding BorderThickness}"
-                                              ContentTemplate="{TemplateBinding ContentTemplate}"
-                                              ContentTransitions="{TemplateBinding ContentTransitions}"
-                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              Padding="{TemplateBinding Padding}"
-                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                              Grid.Column="1" />
-                            <ContentPresenter x:Name="ContentPresenter2"
-                                              AutomationProperties.AccessibilityView="Raw"
-                                              BorderBrush="{TemplateBinding BorderBrush}"
-                                              BorderThickness="{TemplateBinding BorderThickness}"
-                                              ContentTemplate="{TemplateBinding ContentTemplate}"
-                                              ContentTransitions="{TemplateBinding ContentTransitions}"
-                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              Padding="{TemplateBinding Padding}"
-                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                              Grid.Column="1" />
+                        <Border x:Name="AccentBackground"
+                                Background="{ThemeResource AccentButtonBackground}"
+                                Margin="4"
+                                Opacity="0" />
+                        <Grid x:Name="OverlayHost">
+                            <Border x:Name="PointerOverOverlay"
+                                    Background="{ThemeResource NavigationViewItemBackgroundPointerOver}"
+                                    Opacity="0" />
+                            <Border x:Name="PressedOverlay"
+                                    Background="{ThemeResource NavigationViewItemBackgroundPressed}"
+                                    Opacity="0" />
                         </Grid>
+                        <ContentPresenter x:Name="ContentPresenter1"
+                                          AutomationProperties.AccessibilityView="Raw"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          ContentTransitions="{TemplateBinding ContentTransitions}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          Padding="{TemplateBinding Padding}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        <ContentPresenter x:Name="ContentPresenter2"
+                                          AutomationProperties.AccessibilityView="Raw"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          ContentTransitions="{TemplateBinding ContentTransitions}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          Padding="{TemplateBinding Padding}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="chats:ChatStartButton">
+        <Setter Property="Foreground"
+                Value="{ThemeResource AccentButtonForeground}" />
+        <Setter Property="Background"
+                Value="{ThemeResource AccentButtonBackground}" />
+        <Setter Property="Padding"
+                Value="12,0,12,2" />
+        <Setter Property="Margin"
+                Value="4" />
+        <Setter Property="Height"
+                Value="40" />
+        <Setter Property="CornerRadius"
+                Value="20" />
+        <Setter Property="FontSize"
+                Value="15" />
+        <Setter Property="FontWeight"
+                Value="SemiBold" />
+        <Setter Property="HorizontalAlignment"
+                Value="Stretch" />
+        <Setter Property="VerticalAlignment"
+                Value="Center" />
+        <Setter Property="HorizontalContentAlignment"
+                Value="Center" />
+        <Setter Property="VerticalContentAlignment"
+                Value="Center" />
+        <Setter Property="UseSystemFocusVisuals"
+                Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="chats:ChatStartButton">
+                    <Grid x:Name="ShimmerHost"
+                          Background="{TemplateBinding Background}"
+                          CornerRadius="{TemplateBinding CornerRadius}"
+                          RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <ScaleTransform x:Name="Scale" />
+                        </Grid.RenderTransform>
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualStateGroup.Transitions>
+                                    <VisualTransition GeneratedDuration="0:0:0.12" />
+                                </VisualStateGroup.Transitions>
+                                <VisualState x:Name="Normal" />
+                                <VisualState x:Name="PointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Target="ShimmerHost.Background"
+                                                Value="{ThemeResource AccentButtonBackgroundPointerOver}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <VisualState.Setters>
+                                        <Setter Target="ShimmerHost.Background"
+                                                Value="{ThemeResource AccentButtonBackgroundPressed}" />
+                                    </VisualState.Setters>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Scale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         To="0.98"
+                                                         Duration="0" />
+                                        <DoubleAnimation Storyboard.TargetName="Scale"
+                                                         Storyboard.TargetProperty="ScaleY"
+                                                         To="0.98"
+                                                         Duration="0" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Disabled" />
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                        <ContentPresenter x:Name="ContentPresenter"
+                                          AutomationProperties.AccessibilityView="Raw"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          ContentTransitions="{TemplateBinding ContentTransitions}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          Padding="{TemplateBinding Padding}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>

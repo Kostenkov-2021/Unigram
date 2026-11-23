@@ -491,6 +491,7 @@
     <string name="GroupJoin">JOIN</string>
     <string name="GroupJoinRequest">APPLY TO JOIN GROUP</string>
     <string name="GroupJoinRequestSent">JOIN REQUEST SENT</string>
+    <string name="BroadcastGroupInfo">Only admins can send messages in this group.</string>
 
 
 
@@ -3472,6 +3473,7 @@
     <string name="BotStatusCantRead">has no access to messages</string>
     <string name="BotInfoTitle">What can this bot do?</string>
     <string name="BotStart">START</string>
+    <string name="BotStart2">Start Bot</string>
     <string name="BotUnblock">RESTART</string>
     <string name="BotRestart">Restart Bot</string>
 
