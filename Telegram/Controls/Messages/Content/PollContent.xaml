@@ -19,7 +19,9 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="local:PollContent">
-                    <StackPanel>
+                    <!--  Not the control's Padding: the bubble tucks a wrapped footer into that, and
+                          this space under the vote area has to stay in both layouts.  -->
+                    <StackPanel Padding="0,0,0,4">
                         <VisualStateManager.VisualStateGroups>
                             <VisualStateGroup>
                                 <VisualState x:Name="RunningOut">

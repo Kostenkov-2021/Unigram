@@ -21,7 +21,7 @@ using Windows.UI.Xaml.Media;
 
 namespace Telegram.Controls.Messages.Content
 {
-    public sealed partial class PollContent : ControlEx, IContent, IContentWithPlayback
+    public sealed partial class PollContent : ControlEx, IContent, IContentWithPlayback, IContentWithWrap
     {
         private MessageViewModel _message;
         public MessageViewModel Message => _message;
@@ -715,6 +715,50 @@ namespace Telegram.Controls.Messages.Content
         public bool IsValid(MessageContent content, bool primary)
         {
             return content is MessagePoll;
+        }
+
+        public float ContentEnd()
+        {
+            var last = LastLine();
+            if (last == null)
+            {
+                return -1;
+            }
+
+            var width = DesiredSize.Width - Margin.Left - Margin.Right;
+            return (float)((width + last.DesiredSize.Width) / 2);
+        }
+
+        // Of the centered lines at the bottom, at most one of Votes, Submit, Save and View shows at
+        // a time, and the countdown goes under whichever it is.
+        private FrameworkElement LastLine()
+        {
+            if (!_templateApplied)
+            {
+                return null;
+            }
+            else if (EndsIn.Visibility == Visibility.Visible)
+            {
+                return EndsIn;
+            }
+            else if (View.Visibility == Visibility.Visible)
+            {
+                return View;
+            }
+            else if (Save is { Visibility: Visibility.Visible })
+            {
+                return Save;
+            }
+            else if (Submit.Visibility == Visibility.Visible)
+            {
+                return Submit;
+            }
+            else if (Votes.Visibility == Visibility.Visible)
+            {
+                return Votes;
+            }
+
+            return null;
         }
 
         private async void Option_Click(object sender, RoutedEventArgs e)
