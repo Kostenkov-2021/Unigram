@@ -8668,6 +8668,10 @@ namespace Telegram.Views
             ForumNavigation.HorizontalAlignment = left
                 ? HorizontalAlignment.Left
                 : HorizontalAlignment.Stretch;
+
+            // The header scrim spans the whole of the messages' row, and the left tabs are an island
+            // over that row like the ones it passes behind.
+            Canvas.SetZIndex(ForumNavigation, left ? 2 : 0);
         }
 
         // The left tabs stay at the side of the chat, the others keep to the messages' column.
