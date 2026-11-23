@@ -5855,10 +5855,10 @@
     <string name="TranslationBarHiddenForChat">Translation bar hidden for this chat.</string>
 
 
+    <string name="UpgradePremiumTitle">Telegram Premium with a **{0}%** discount</string>
 
 
-
-
+    <string name="SaveOnAnnualPremiumMessage">Sign up for the annual payment plan for Telegram Premium now to get the discount.</string>
 
 
 
@@ -6108,8 +6108,8 @@
 
 
     <string name="BotWebAppInstantViewOpen">Launch</string>
-
-
+    <string name="RestorePremiumHintTitle">Get Premium back with up to **{0}%** off</string>
+    <string name="RestorePremiumHintMessage">Your Telegram Premium has recently expired. Tap here to extend it.</string>
     <string name="ReplyPrivately">Reply privately...</string>
 
     <string name="SelfStoryTitle">My Story</string>

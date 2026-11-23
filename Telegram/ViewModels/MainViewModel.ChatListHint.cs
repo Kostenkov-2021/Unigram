@@ -12,6 +12,7 @@ using Telegram.Common;
 using Telegram.Controls;
 using Telegram.Td;
 using Telegram.Td.Api;
+using Telegram.ViewModels.Premium;
 using Telegram.Views.Premium.Popups;
 using Telegram.Views.Settings;
 using Telegram.Views.Settings.Popups;
@@ -28,6 +29,8 @@ namespace Telegram.ViewModels
         BirthdaysToday,
         SetBirthdate,
         GiftPremiumForChristmas,
+        RestorePremium,
+        SubscribeToAnnualPremium,
         SetProfilePhoto
     }
 
@@ -62,6 +65,10 @@ namespace Telegram.ViewModels
     public partial class MainViewModel
     {
         private bool _selfFullInfoRequested;
+
+        // -1 until GetPremiumState has answered: the payment options do not change within a session.
+        private int _premiumHintDiscount = -1;
+        private bool _premiumStateRequested;
 
         /// <summary>
         /// The one hint shown above the main chat list, picked in a fixed order of precedence.
@@ -120,8 +127,21 @@ namespace Telegram.ViewModels
                 return new ChatListHint(ChatListHintType.GiftPremiumForChristmas, new SuggestedActionGiftPremiumForChristmas(), ClientEx.ParseMarkdown(Strings.GiftPremiumEventAdsTitle), ClientEx.ParseMarkdown(Strings.BoostingPremiumChristmasSubTitle), true);
             }
 
-            // TODO: SuggestedActionRestorePremium and SuggestedActionSubscribeToAnnualPremium go here.
             // SuggestedActionUpgradePremium is never shown: it needs store billing, and Premium is bought through invoices.
+            if (ClientService.IsPremiumAvailable && !ClientService.IsPremium)
+            {
+                var restore = ClientService.HasSuggestedAction(new SuggestedActionRestorePremium());
+                if ((restore || ClientService.HasSuggestedAction(new SuggestedActionSubscribeToAnnualPremium())) && TryGetPremiumHintDiscount(out int discount))
+                {
+                    if (restore)
+                    {
+                        return new ChatListHint(ChatListHintType.RestorePremium, new SuggestedActionRestorePremium(), ClientEx.ParseMarkdown(string.Format(Strings.RestorePremiumHintTitle, discount)), ClientEx.ParseMarkdown(Strings.RestorePremiumHintMessage), false);
+                    }
+
+                    // The upgrade title does go with the annual message.
+                    return new ChatListHint(ChatListHintType.SubscribeToAnnualPremium, new SuggestedActionSubscribeToAnnualPremium(), ClientEx.ParseMarkdown(string.Format(Strings.UpgradePremiumTitle, discount)), ClientEx.ParseMarkdown(Strings.SaveOnAnnualPremiumMessage), false);
+                }
+            }
 
             if (ClientService.HasSuggestedAction(new SuggestedActionSetProfilePhoto()) && ClientService.TryGetUser(ClientService.Options.MyId, out User self) && self.ProfilePhoto == null)
             {
@@ -151,6 +171,61 @@ namespace Telegram.ViewModels
             }
 
             return senders != null;
+        }
+
+        private bool TryGetPremiumHintDiscount(out int discount)
+        {
+            discount = _premiumHintDiscount;
+
+            if (discount < 0 && !_premiumStateRequested)
+            {
+                _premiumStateRequested = true;
+                LoadPremiumHintDiscount();
+            }
+
+            return discount > 0;
+        }
+
+        private async void LoadPremiumHintDiscount()
+        {
+            var response = await ClientService.SendAsync(new GetPremiumState());
+            if (response is PremiumState state)
+            {
+                _premiumHintDiscount = GetAnnualDiscount(state.PaymentOptions);
+
+                // No update follows the answer, so the page is told to pick the hint again.
+                RaisePropertyChanged(nameof(GetChatListHint));
+            }
+            else
+            {
+                _premiumStateRequested = false;
+            }
+        }
+
+        // What the annual option saves against twelve monthly payments, in whole percent rounded down.
+        private static int GetAnnualDiscount(Vector<PremiumStatePaymentOption> options)
+        {
+            var monthly = 0d;
+            var annual = 0d;
+
+            foreach (var option in options)
+            {
+                if (option.PaymentOption.MonthCount == 1)
+                {
+                    monthly = option.PaymentOption.Amount;
+                }
+                else if (option.PaymentOption.MonthCount == 12)
+                {
+                    annual = option.PaymentOption.Amount / 12d;
+                }
+            }
+
+            if (monthly <= 0 || annual <= 0)
+            {
+                return 0;
+            }
+
+            return Math.Max((int)((1 - annual / monthly) * 100), 0);
         }
 
         private bool HasNoBirthdate()
@@ -191,6 +266,11 @@ namespace Telegram.ViewModels
                     break;
                 case ChatListHintType.GiftPremiumForChristmas:
                     GiftHelper.ChooseRecipient(ClientService, NavigationService);
+                    break;
+                case ChatListHintType.RestorePremium:
+                case ChatListHintType.SubscribeToAnnualPremium:
+                    NavigationService.ShowPopup(new PromoPopup(), new PromoArgs(null, true));
+                    ClientService.Send(new HideSuggestedAction(hint.Action));
                     break;
                 case ChatListHintType.SetProfilePhoto:
                     SetProfilePhoto();

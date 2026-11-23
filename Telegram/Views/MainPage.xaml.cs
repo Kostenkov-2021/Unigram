@@ -985,7 +985,7 @@ namespace Telegram.Views
 
         private void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(MainViewModel.IsPrimaryFolderSelected))
+            if (e.PropertyName == nameof(MainViewModel.IsPrimaryFolderSelected) || e.PropertyName == nameof(MainViewModel.GetChatListHint))
             {
                 UpdateBannerHints();
             }

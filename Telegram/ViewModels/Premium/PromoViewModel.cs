@@ -21,6 +21,11 @@ using Windows.UI.Xaml.Navigation;
 
 namespace Telegram.ViewModels.Premium
 {
+    /// <summary>
+    /// Opens the promo on the annual payment option rather than the default one.
+    /// </summary>
+    public sealed record PromoArgs(PremiumSource Source, bool SelectAnnual);
+
     public partial class PromoViewModel : ViewModelBase
     {
         public PromoViewModel(IClientService clientService, ISettingsService settingsService, IEventAggregator aggregator)
@@ -64,6 +69,13 @@ namespace Telegram.ViewModels.Premium
 
         protected override async Task OnNavigatedToAsync(object parameter, NavigationMode mode, NavigationState _)
         {
+            var selectAnnual = false;
+            if (parameter is PromoArgs args)
+            {
+                parameter = args.Source;
+                selectAnnual = args.SelectAnnual;
+            }
+
             PremiumSource premiumSource = parameter is PremiumSource source ? source : new PremiumSourceSettings();
 
             var response = await ClientService.SendAsync(new GetPremiumFeatures(premiumSource)) as PremiumFeatures;
@@ -99,7 +111,9 @@ namespace Telegram.ViewModels.Premium
             }
 
             State = state;
-            Option = state.PaymentOptions.LastOrDefault();
+            Option = selectAnnual
+                ? state.PaymentOptions.FirstOrDefault(x => x.PaymentOption.MonthCount == 12) ?? state.PaymentOptions.LastOrDefault()
+                : state.PaymentOptions.LastOrDefault();
 
             CanPurchase = Option != null
                 && ClientService.IsPremiumAvailable;
