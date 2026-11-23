@@ -154,8 +154,17 @@ namespace Telegram.Views.Profile
         {
             try
             {
-                // Pinned gifts lead the full list only, and only when it is sorted by date.
-                if (e.Items[0] is ReceivedGift gift && gift.IsPinned && ViewModel.IsOwned && ViewModel.SelectedCollection.Id == 0 && !ViewModel.SortByPrice)
+                var canReorder = false;
+
+                // In All gifts only the pinned ones move, and only while they lead the list, sorted by date.
+                if (e.Items[0] is ReceivedGift gift)
+                {
+                    canReorder = ViewModel.SelectedCollection.Id == 0
+                        ? gift.IsPinned && ViewModel.IsOwned && !ViewModel.SortByPrice
+                        : ViewModel.CanReorderCollectionGifts;
+                }
+
+                if (canReorder)
                 {
                     ScrollingHost.CanReorderItems = true;
                 }
@@ -178,7 +187,14 @@ namespace Telegram.Views.Profile
 
             if (args.DropResult == DataPackageOperation.Move && args.Items.Count == 1 && args.Items[0] is ReceivedGift)
             {
-                ViewModel.SetPinnedItems();
+                if (ViewModel.SelectedCollection.Id == 0)
+                {
+                    ViewModel.SetPinnedItems();
+                }
+                else
+                {
+                    ViewModel.ReorderCollectionGifts();
+                }
             }
         }
 
@@ -221,12 +237,27 @@ namespace Telegram.Views.Profile
 
         private void Navigation_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
         {
-
+            // All gifts is not a collection, and with a single collection there is nothing to reorder.
+            if (ViewModel.IsOwned && ViewModel.Collections.Count > 2 && e.Items.Count == 1 && e.Items[0] is GiftCollectionViewModel { Id: not 0 })
+            {
+                Navigation.CanReorderItems = true;
+                ViewModel.BeginReorderCollections();
+            }
+            else
+            {
+                Navigation.CanReorderItems = false;
+                e.Cancel = true;
+            }
         }
 
         private void Navigation_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
         {
+            Navigation.CanReorderItems = false;
 
+            if (args.DropResult == DataPackageOperation.Move)
+            {
+                ViewModel.ReorderCollections();
+            }
         }
 
         private void AddCollection_Click(object sender, RoutedEventArgs e)

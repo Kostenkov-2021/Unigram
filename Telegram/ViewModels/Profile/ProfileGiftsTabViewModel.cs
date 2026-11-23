@@ -716,7 +716,9 @@ namespace Telegram.ViewModels.Profile
 
         public ReceivedGiftsCollection CreateItemsSource(GiftCollectionViewModel collection)
         {
-            return new ReceivedGiftsCollection(this, _senderId, collection, _excludeUnsaved, _excludeSaved, _excludeUnlimited, _excludeUpgradable, _excludeNonUpgradable, _excludeUpgraded, _sortByPrice);
+            // A collection keeps the order its owner gave it, which is also the order its gifts are dragged into.
+            var sortByPrice = _sortByPrice && collection.Id == 0;
+            return new ReceivedGiftsCollection(this, _senderId, collection, _excludeUnsaved, _excludeSaved, _excludeUnlimited, _excludeUpgradable, _excludeNonUpgradable, _excludeUpgraded, sortByPrice);
         }
 
         public bool CompareItems(ReceivedGift oldItem, ReceivedGift newItem)
@@ -1222,6 +1224,148 @@ namespace Telegram.ViewModels.Profile
             // The lists forward their changes by index, which the drag left pointing at other items
             // in the view, so it is matched to them again.
             ItemsView.SetSource(_selectedCollection.Items);
+        }
+
+        /// <summary>
+        /// Gifts in a collection can be dragged only while the list shows all of it:
+        /// reorderGiftCollectionGifts moves the given gifts to the front, so a filtered list would
+        /// push the hidden ones behind them.
+        /// </summary>
+        public bool CanReorderCollectionGifts => IsOwned
+            && _selectedCollection.Id != 0
+            && !_excludeUnsaved
+            && !_excludeSaved
+            && !_excludeUnlimited
+            && !_excludeUpgradable
+            && !_excludeNonUpgradable
+            && !_excludeUpgraded;
+
+        /// <summary>
+        /// Called after a gift in a collection is dragged; the loaded gifts go first in their new
+        /// order and the server keeps the rest after them as they were.
+        /// </summary>
+        public async void ReorderCollectionGifts()
+        {
+            var collection = _selectedCollection;
+            var items = collection.Items.Source;
+
+            // The drag moved the items in the view only, not in the lists behind it.
+            var order = new List<ReceivedGift>(ItemsView.Count);
+            var receivedGiftIds = new MutableVector<string>(ItemsView.Count);
+
+            foreach (var gift in ItemsView)
+            {
+                order.Add(gift);
+                receivedGiftIds.Add(gift.ReceivedGiftId);
+            }
+
+            var response = await ClientService.SendAsync(new ReorderGiftCollectionGifts(_senderId, collection.Id, receivedGiftIds));
+            if (response is GiftCollection && items == collection.Items.Source && items.Count == order.Count)
+            {
+                Arrange(items, order, null);
+            }
+
+            // The lists forward their changes by index, which the drag left pointing at other items
+            // in the view, so it is matched to them again; after a failure this also undoes the drop.
+            if (collection == _selectedCollection)
+            {
+                ItemsView.SetSource(collection.Items);
+            }
+        }
+
+        private List<GiftCollectionViewModel> _collectionsOrder;
+
+        public void BeginReorderCollections()
+        {
+            _collectionsOrder = new List<GiftCollectionViewModel>(Collections);
+        }
+
+        /// <summary>
+        /// Called after a collection tab is dragged. All gifts is not a collection and stays first,
+        /// so a tab dropped before it lands right after it.
+        /// </summary>
+        public async void ReorderCollections()
+        {
+            var previous = _collectionsOrder;
+            _collectionsOrder = null;
+
+            if (previous == null || previous.Count != Collections.Count)
+            {
+                return;
+            }
+
+            var order = new List<GiftCollectionViewModel>(Collections.Count);
+            var changed = false;
+
+            foreach (var collection in Collections)
+            {
+                if (collection.Id == 0)
+                {
+                    order.Insert(0, collection);
+                }
+                else
+                {
+                    order.Add(collection);
+                }
+            }
+
+            for (int i = 0; i < order.Count; i++)
+            {
+                changed |= order[i] != previous[i];
+            }
+
+            Arrange(Collections, order, _selectedCollection);
+
+            if (changed is false)
+            {
+                return;
+            }
+
+            var collectionIds = new MutableVector<int>(order.Count - 1);
+
+            foreach (var collection in order)
+            {
+                if (collection.Id != 0)
+                {
+                    collectionIds.Add(collection.Id);
+                }
+            }
+
+            var response = await ClientService.SendAsync(new ReorderGiftCollections(_senderId, collectionIds));
+            if (response is not Ok && previous.Count == Collections.Count)
+            {
+                Arrange(Collections, previous, _selectedCollection);
+            }
+        }
+
+        /// <summary>
+        /// Moves the items into the given order. <paramref name="anchor"/> never leaves the list, the
+        /// others move around it: removing the selected tab would hand the selection to All gifts.
+        /// </summary>
+        private static void Arrange<T>(IList<T> items, IList<T> order, T anchor) where T : class
+        {
+            for (int i = 0; i < order.Count; i++)
+            {
+                while (items[i] != order[i])
+                {
+                    if (order[i] == anchor)
+                    {
+                        var index = items.IndexOf(anchor);
+                        var item = items[i];
+
+                        items.RemoveAt(i);
+                        items.Insert(index, item);
+                    }
+                    else
+                    {
+                        var index = items.IndexOf(order[i]);
+                        var item = items[index];
+
+                        items.RemoveAt(index);
+                        items.Insert(i, item);
+                    }
+                }
+            }
         }
 
         public void CopyGift(ReceivedGift gift)
