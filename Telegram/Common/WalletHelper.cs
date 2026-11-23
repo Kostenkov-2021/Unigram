@@ -10,9 +10,11 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Telegram.Controls;
+using Telegram.Controls.Media;
 using Telegram.Navigation.Services;
 using Telegram.Services;
 using Telegram.Services.Wallet;
+using Telegram.Td.Api;
 using Telegram.Views.Popups;
 using Telegram.Views.Wallet.Popups;
 using Windows.UI.Xaml;
@@ -462,6 +464,154 @@ namespace Telegram.Common
             /// when no password was used - already bound, or never got that far.
             /// </summary>
             public string Password { get; }
+        }
+
+        /// <summary>
+        /// A top-up comes from a card unless the provider is the crypto one.
+        /// </summary>
+        public static bool IsCryptoTopUp(TonWalletTransactionTypeOnRampDeposit deposit)
+        {
+            return string.Equals(deposit.ProviderName, "walt", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(deposit.ProviderName, "wallet", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static string CapitalizeProvider(string provider)
+        {
+            return provider.Length > 0 && char.IsLower(provider[0])
+                ? char.ToUpper(provider[0]) + provider.Substring(1)
+                : provider;
+        }
+
+        /// <summary>
+        /// What a gift market transaction did, read once from its type for both the history row
+        /// and the transaction popup.
+        /// </summary>
+        public readonly struct GiftMarketActivity
+        {
+            private GiftMarketActivity(TonNft nft, string title, string status, string glyph, bool outgoing, long amount, int items, long price, long oldPrice, int expirationDate, long cancellationFee, string counterparty, string counterpartyAddress)
+            {
+                Nft = nft;
+                Title = title;
+                Status = status;
+                Glyph = glyph;
+                IsOutgoing = outgoing;
+                Amount = amount;
+                Items = items;
+                Price = price;
+                OldPrice = oldPrice;
+                ExpirationDate = expirationDate;
+                CancellationFee = cancellationFee;
+                Counterparty = counterparty;
+                CounterpartyAddress = counterpartyAddress;
+            }
+
+            /// <summary>
+            /// Null when the gift is not known to the explorer.
+            /// </summary>
+            public TonNft Nft { get; }
+
+            public string Title { get; }
+
+            public string Status { get; }
+
+            public string Glyph { get; }
+
+            /// <summary>
+            /// Drawn on blue rather than green: the gift or the money left the wallet and has not
+            /// been paid for yet.
+            /// </summary>
+            public bool IsOutgoing { get; }
+
+            /// <summary>
+            /// Signed nanograms, 0 when the row moves the gift rather than money.
+            /// </summary>
+            public long Amount { get; }
+
+            /// <summary>
+            /// +1 or -1 when the gift itself came or went, 0 otherwise.
+            /// </summary>
+            public int Items { get; }
+
+            /// <summary>
+            /// 0 when the transaction carries no price of its own.
+            /// </summary>
+            public long Price { get; }
+
+            /// <summary>
+            /// Non-zero only for a listing that changed the price, which makes <see cref="Price"/>
+            /// the new one.
+            /// </summary>
+            public long OldPrice { get; }
+
+            public int ExpirationDate { get; }
+
+            public long CancellationFee { get; }
+
+            /// <summary>
+            /// The other side's role, null when there is none.
+            /// </summary>
+            public string Counterparty { get; }
+
+            public string CounterpartyAddress { get; }
+
+            public static bool TryGet(TonWalletTransactionType type, out GiftMarketActivity activity)
+            {
+                const string Swap = Icons.ArrowSync;
+                const string Out = Icons.ArrowCircleUpFilled;
+                const string In = Icons.ArrowCircleDownFilled;
+
+                switch (type)
+                {
+                    case TonWalletTransactionTypeTelegramGiftPurchase purchase:
+                        var paid = Math.Abs(purchase.Amount);
+                        activity = new GiftMarketActivity(purchase.Nft, string.Format(Strings.WalletOnchainGiftBoughtFor, GiftHelper.FormatGrams(paid)), Strings.WalletOnchainGiftStatusPurchased,
+                            Swap, false, 0, 1, paid, 0, 0, 0, Strings.GiftOnchainRowSeller, string.Empty);
+                        return true;
+                    case TonWalletTransactionTypeTelegramGiftSale sale:
+                        activity = new GiftMarketActivity(sale.Nft, string.Format(Strings.WalletOnchainGiftSoldFor, GiftHelper.FormatGrams(Math.Abs(sale.Amount))), Strings.WalletOnchainGiftStatusSold,
+                            Swap, false, sale.Amount, 0, 0, 0, 0, 0, Strings.GiftOnchainRowBuyer, string.Empty);
+                        return true;
+                    case TonWalletTransactionTypeTelegramGiftListing listing when listing.OldPrice > 0:
+                        // A price change leaves the gift where it was, so neither it nor any money moves.
+                        activity = new GiftMarketActivity(listing.Nft, string.Format(Strings.WalletOnchainGiftRepriced, GiftHelper.FormatGrams(listing.Price)), Strings.WalletOnchainGiftStatusPriceChanged,
+                            Icons.TagFilled, false, 0, 0, listing.Price, listing.OldPrice, 0, 0, null, string.Empty);
+                        return true;
+                    case TonWalletTransactionTypeTelegramGiftListing listing:
+                        var listed = listing.Price > 0 ? string.Format(Strings.WalletOnchainGiftPutOnSaleFor, GiftHelper.FormatGrams(listing.Price)) : Strings.WalletOnchainGiftPutOnSale;
+                        activity = new GiftMarketActivity(listing.Nft, listed, Strings.WalletOnchainGiftStatusPutOnSale,
+                            Out, true, 0, -1, listing.Price, 0, 0, 0, null, string.Empty);
+                        return true;
+                    case TonWalletTransactionTypeTelegramGiftDelisting delisting:
+                        activity = new GiftMarketActivity(delisting.Nft, Strings.WalletOnchainGiftRemovedFromSale, Strings.WalletOnchainGiftStatusRemovedFromSale,
+                            In, false, 0, 1, 0, 0, 0, 0, null, string.Empty);
+                        return true;
+                    case TonWalletTransactionTypeTelegramGiftOfferCreation creation:
+                        activity = new GiftMarketActivity(creation.Nft, Strings.WalletOnchainGiftOfferSent, Strings.WalletOnchainGiftOfferSent,
+                            Out, true, -Math.Abs(creation.Amount), 0, creation.Price, 0, creation.ExpirationDate, 0, Strings.WalletRecipient, creation.CounterpartyAddress);
+                        return true;
+                    case TonWalletTransactionTypeTelegramGiftOfferAcceptance acceptance:
+                        // The buyer gets the gift and the seller the price.
+                        activity = new GiftMarketActivity(acceptance.Nft, string.Format(Strings.WalletOnchainGiftOfferAcceptedFor, GiftHelper.FormatGrams(acceptance.Price)), Strings.WalletOnchainGiftStatusOfferAccepted,
+                            Swap, false, acceptance.IsBuyer ? 0 : acceptance.Price, acceptance.IsBuyer ? 1 : 0, acceptance.Price, 0, 0, 0,
+                            acceptance.IsBuyer ? Strings.GiftOnchainRowSeller : Strings.GiftOnchainRowBuyer, acceptance.CounterpartyAddress);
+                        return true;
+                    case TonWalletTransactionTypeTelegramGiftOfferCancellation cancellation:
+                        activity = new GiftMarketActivity(cancellation.Nft, Strings.WalletOnchainGiftOfferCancelled, Strings.WalletOnchainGiftOfferCancelled,
+                            In, false, cancellation.RefundAmount, 0, cancellation.Price, 0, 0, cancellation.FineAmount, Strings.WalletRecipient, cancellation.CounterpartyAddress);
+                        return true;
+                    case TonWalletTransactionTypeTelegramGiftOfferDecline decline:
+                        activity = new GiftMarketActivity(decline.Nft, Strings.WalletOnchainGiftOfferDeclined, Strings.WalletOnchainGiftOfferDeclined,
+                            In, false, decline.RefundAmount, 0, decline.Price, 0, 0, 0, Strings.WalletRecipient, decline.CounterpartyAddress);
+                        return true;
+                    case TonWalletTransactionTypeTelegramGiftOfferExpiration expiration:
+                        activity = new GiftMarketActivity(expiration.Nft, Strings.WalletOnchainGiftOfferExpired, Strings.WalletOnchainGiftOfferExpired,
+                            In, false, expiration.RefundAmount, 0, expiration.Price, 0, 0, 0, Strings.WalletRecipient, expiration.CounterpartyAddress);
+                        return true;
+                    default:
+                        activity = default;
+                        return false;
+                }
+            }
         }
 
         private enum BindOutcome
