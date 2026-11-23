@@ -18,6 +18,7 @@ using Telegram.Views.Popups;
 using Windows.Globalization.NumberFormatting;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Documents;
 using Windows.UI.Xaml.Hosting;
 using Windows.UI.Xaml.Input;
 
@@ -37,8 +38,40 @@ namespace Telegram.Views.Stars.Popups
         private readonly UpgradedGift _gift;
         private readonly string _ownerName;
 
+        // A hundredth of a Gram, the unit the amount is typed in.
+        private const long NanogramsPerCent = 10_000_000;
+
+        // An on-chain offer is in Grams only, paid from the wallet, which is why its balance is held.
+        private readonly bool _onChain;
+        private readonly long _balance;
+        private readonly INavigationService _navigationService;
+
         private bool _gram;
         private long _value;
+
+        /// <summary>
+        /// An offer made on-chain, from the wallet holding <paramref name="balance"/> nanograms.
+        /// </summary>
+        public GiftOfferPopup(IClientService clientService, INavigationService navigationService, UpgradedGift gift, string ownerName, long balance)
+            : this(clientService, gift, ownerName)
+        {
+            _onChain = true;
+            _balance = balance;
+            _navigationService = navigationService;
+
+            Currency.Visibility = Visibility.Collapsed;
+
+            // Two days, rather than the one an offer in Stars starts at.
+            OfferDuration.SelectedIndex = 4;
+
+            var text = Strings.GiftOnchainOfferInsufficient;
+            var split = text.IndexOf(". ");
+
+            InsufficientRun.Text = split < 0 ? string.Empty : text.Substring(0, split + 2);
+            DepositRun.Text = split < 0 ? text : text.Substring(split + 2);
+
+            SetCurrency(true, false);
+        }
 
         public GiftOfferPopup(IClientService clientService, UpgradedGift gift, string ownerName)
         {
@@ -59,7 +92,6 @@ namespace Telegram.Views.Stars.Popups
 
             scope.Names.Add(name);
             Label.InputScope = scope;
-            Label.Padding = new Thickness(36, Label.Padding.Top, Label.Padding.Right, Label.Padding.Bottom);
 
             foreach (var duration in _durations)
             {
@@ -84,20 +116,39 @@ namespace Telegram.Views.Stars.Popups
 
         public int Duration => _durations[OfferDuration.SelectedIndex];
 
-        private long Minimum => _gram
-            ? Math.Max(_clientService.Options.GiftResaleGramCentCountMin, 1)
-            : _clientService.Options.GiftResaleStarCountMin;
+        /// <summary>
+        /// The on-chain offer in nanograms.
+        /// </summary>
+        public long GramAmount => _value * NanogramsPerCent;
 
-        private long Maximum => _gram
-            ? _clientService.Options.GiftResaleGramCentCountMax
-            : _clientService.Options.GiftResaleStarCountMax;
+        // On-chain: the gift's own minimum, rounded up to what can be typed, or 1 Gram when it has
+        // none; and at most a million Grams.
+        private long Minimum => _onChain
+            ? _gift.MinOnChainPurchaseOfferGramAmount > 0 ? (_gift.MinOnChainPurchaseOfferGramAmount + NanogramsPerCent - 1) / NanogramsPerCent : 100
+            : _gram
+                ? Math.Max(_clientService.Options.GiftResaleGramCentCountMin, 1)
+                : _clientService.Options.GiftResaleStarCountMin;
+
+        private long Maximum => _onChain
+            ? 100_000_000
+            : _gram
+                ? _clientService.Options.GiftResaleGramCentCountMax
+                : _clientService.Options.GiftResaleStarCountMax;
 
         private void SetCurrency(bool gram, bool animated)
         {
             _gram = gram;
 
-            HeaderText.Text = gram ? Strings.GiftOfferTONToOffer : Strings.GiftOfferStarsToOffer;
-            TextBlockHelper.SetMarkdown(DurationInfo, string.Format(gram ? Strings.GiftOfferDurationInfoTON : Strings.GiftOfferDurationInfoStars, _ownerName));
+            if (_onChain)
+            {
+                HeaderText.Text = Strings.GiftOnchainOfferGramsToOffer;
+                DurationInfo.Text = Strings.GiftOnchainOfferDurationInfo;
+            }
+            else
+            {
+                HeaderText.Text = gram ? Strings.GiftOfferTONToOffer : Strings.GiftOfferStarsToOffer;
+                TextBlockHelper.SetMarkdown(DurationInfo, string.Format(gram ? Strings.GiftOfferDurationInfoTON : Strings.GiftOfferDurationInfoStars, _ownerName));
+            }
 
             if (animated)
             {
@@ -127,28 +178,47 @@ namespace Telegram.Views.Stars.Popups
             var tooBig = value > Maximum;
             var tooSmall = value > 0 && value < Minimum;
 
+            // Only an on-chain offer is paid up front, so only it can be more than there is.
+            var insufficient = _onChain && value > 0 && !tooBig && value * NanogramsPerCent > _balance;
+
             var gift = _gift.ToName();
 
             if (tooBig || tooSmall)
             {
                 var limit = FormatAmount(tooBig ? Maximum : Minimum);
-                var text = _gram
-                    ? tooBig ? Strings.GiftOfferTONToOfferInfoIsHigh : Strings.GiftOfferTONToOfferInfoIsLow
-                    : tooBig ? Strings.GiftOfferStarsToOfferInfoIsHigh : Strings.GiftOfferStarsToOfferInfoIsLow;
+                var text = _onChain
+                    ? tooBig ? Strings.GiftOnchainOfferGramsHigh : Strings.GiftOnchainOfferGramsLow
+                    : _gram
+                        ? tooBig ? Strings.GiftOfferTONToOfferInfoIsHigh : Strings.GiftOfferTONToOfferInfoIsLow
+                        : tooBig ? Strings.GiftOfferStarsToOfferInfoIsHigh : Strings.GiftOfferStarsToOfferInfoIsLow;
 
                 TextBlockHelper.SetMarkdown(ErrorText, string.Format(text, limit, gift));
                 ErrorText.Visibility = Visibility.Visible;
                 FooterText.Visibility = Visibility.Collapsed;
+                InsufficientText.Visibility = Visibility.Collapsed;
+            }
+            else if (insufficient)
+            {
+                InsufficientText.Visibility = Visibility.Visible;
+                FooterText.Visibility = Visibility.Collapsed;
+                ErrorText.Visibility = Visibility.Collapsed;
             }
             else
             {
-                TextBlockHelper.SetMarkdown(FooterText, string.Format(_gram ? Strings.GiftOfferTONToOfferInfo : Strings.GiftOfferStarsToOfferInfo, gift));
+                var text = _onChain
+                    ? Strings.GiftOnchainOfferGramsInfo
+                    : _gram ? Strings.GiftOfferTONToOfferInfo : Strings.GiftOfferStarsToOfferInfo;
+
+                TextBlockHelper.SetMarkdown(FooterText, string.Format(text, gift));
                 FooterText.Visibility = Visibility.Visible;
                 ErrorText.Visibility = Visibility.Collapsed;
+                InsufficientText.Visibility = Visibility.Collapsed;
             }
 
-            IsPrimaryButtonEnabled = value > 0 && !tooBig && !tooSmall;
-            PrimaryButtonText = string.Format(Strings.GiftOfferButtonStars, FormatAmount(value)).ReplaceStar(_gram ? Icons.Gram14 : Icons.Premium);
+            IsPrimaryButtonEnabled = value > 0 && !tooBig && !tooSmall && !insufficient;
+            PrimaryButtonText = _onChain
+                ? string.Format(Strings.GiftOnchainOfferButton, FormatAmount(value))
+                : string.Format(Strings.GiftOfferButtonStars, FormatAmount(value)).ReplaceStar(_gram ? Icons.Gram14 : Icons.Premium);
 
             var usd = _gram
                 ? value / 1000000d * _clientService.Options.MillionGramToUsdRate
@@ -185,6 +255,12 @@ namespace Telegram.Views.Stars.Popups
                 e.Handled = true;
                 Hide(ContentDialogResult.Primary);
             }
+        }
+
+        private void Deposit_Click(Hyperlink sender, HyperlinkClickEventArgs args)
+        {
+            Hide();
+            _navigationService?.NavigateToWallet();
         }
 
         private void Currency_SelectionChanged(object sender, SelectionChangedEventArgs e)

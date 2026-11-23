@@ -4414,7 +4414,7 @@ namespace Telegram.Services.Wallet
         /// <summary>
         /// Whether two addresses name the same account, whichever form each is written in.
         /// </summary>
-        private static bool IsSameAddress(string left, string right)
+        internal static bool IsSameAddress(string left, string right)
         {
             if (string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right))
             {

@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Telegram.Controls;
+using Telegram.Converters;
 using Telegram.Navigation.Services;
 using Telegram.Services;
 using Telegram.Services.Wallet;
@@ -324,6 +325,133 @@ namespace Telegram.Common
         #endregion
 
         #region Offers
+
+        /// <summary>
+        /// Whether the current user can offer to buy <paramref name="gift"/> on-chain: it is in a
+        /// wallet that is not theirs, takes offers, and is not on sale.
+        /// </summary>
+        public static bool CanSendOffer(IClientService clientService, UpgradedGift gift)
+        {
+            var myId = clientService.Options.MyId;
+
+            if (gift.MinOnChainPurchaseOfferGramAmount <= 0
+                || gift.ResaleParameters != null
+                || !clientService.Options.CanUseTonWallet
+                || string.IsNullOrEmpty(gift.GiftAddress)
+                || string.IsNullOrEmpty(gift.OwnerAddress)
+                || gift.OwnerId.IsUser(myId)
+                || gift.HostId.IsUser(myId))
+            {
+                return false;
+            }
+
+            var wallet = clientService.Session.Resolve<IWalletService>();
+            return !WalletService.IsSameAddress(gift.OwnerAddress, wallet.State.Address);
+        }
+
+        /// <summary>
+        /// Offers to buy a gift on-chain. The offered Grams leave the wallet with the transaction and
+        /// are held by the offer contract until it is accepted, declined or expires. True once the
+        /// transaction is sent.
+        /// </summary>
+        public static async Task<bool> SendOfferAsync(IClientService clientService, INavigationService navigation, UpgradedGift gift, string ownerName)
+        {
+            var xamlRoot = navigation.XamlRoot;
+
+            var wallet = clientService.Session.Resolve<IWalletService>();
+            var state = await wallet.RestoreAsync();
+
+            if (!state.HasWallet)
+            {
+                ShowWalletUnavailable(navigation, xamlRoot, true);
+                return false;
+            }
+
+            var offer = new GiftOfferPopup(clientService, navigation, gift, ownerName, (long)state.BalanceNanograms);
+
+            var confirm = await navigation.ShowPopupAsync(offer);
+            if (confirm != ContentDialogResult.Primary)
+            {
+                return false;
+            }
+
+            var amount = offer.GramAmount;
+
+            var response = await clientService.SendAsync(new SendGiftOnChainPurchaseOffer(gift.Name, amount, offer.Duration));
+            if (response is not GiftOnChainPurchaseOfferTransaction transaction || transaction.Message == null)
+            {
+                ShowError(clientService, navigation, xamlRoot, response as Error, null);
+                return false;
+            }
+
+            // The relayed form is not used for an offer: the offered Grams are part of the message.
+            var regular = new[] { transaction.Message };
+            var value = transaction.Message.GramAmount;
+
+            var name = gift.ToName();
+            var basisPoints = gift.FeeBasisPoints;
+            var fee = basisPoints > 0 ? amount / 10000 * basisPoints + amount % 10000 * basisPoints / 10000 : 0;
+
+            // Rounded up to a ten-thousandth of a Gram, the last digit the amounts are written with.
+            var payTotal = (value + 99_999) / 100_000 * 100_000;
+
+            GiftOnChainConfirmPopup popup = null;
+            var sent = false;
+
+            popup = new GiftOnChainConfirmPopup(
+                Strings.GiftOnchainOfferConfirmTitle,
+                gift.OwnerId != null && !string.IsNullOrEmpty(ownerName)
+                    ? string.Format(Strings.GiftOnchainOfferConfirmTextUser, ownerName, name)
+                    : string.Format(Strings.GiftOnchainOfferConfirmText, name),
+                string.Format(Strings.GiftOnchainOfferButton, GiftHelper.FormatGramValue(amount)),
+                SendAsync);
+
+            popup.AddRow(Strings.GiftOnchainOfferRowYourOffer, GiftHelper.FormatGrams(amount - fee));
+
+            if (fee > 0)
+            {
+                popup.AddRow(Strings.GiftOnchainOfferRowPlatformFee, FormatFee(fee, basisPoints));
+            }
+
+            if (value > amount)
+            {
+                popup.AddRow(Strings.GiftOnchainRowContractFee, GiftHelper.FormatGrams(Math.Max(payTotal - amount, 0)));
+            }
+
+            popup.AddRow(Strings.GiftOnchainOfferRowYouPay, GiftHelper.FormatGrams(payTotal));
+            popup.AddRow(Strings.GiftOnchainRowYouReceive, name);
+
+            if (transaction.ExpirationDate > 0)
+            {
+                popup.AddRow(Strings.GiftOnchainOfferRowExpires, Formatter.DateAt(transaction.ExpirationDate));
+            }
+
+            popup.SetNote(Strings.GiftOnchainOfferRefundNote);
+
+            _ = EstimateFeeAsync(wallet, popup, regular);
+
+            await navigation.ShowPopupAsync(popup);
+
+            return sent;
+
+            async Task<bool> SendAsync()
+            {
+                var result = await GiftOnChainHelper.SendAsync(clientService, navigation, popup.XamlRoot, regular, null, Strings.GiftOnchainNotEnoughToBuy, null);
+                if (result == null)
+                {
+                    return false;
+                }
+
+                sent = true;
+
+                var text = string.Format("**{0}**\n{1}", Strings.GiftOnchainOfferSentTitle, string.Format(Strings.GiftOnchainOfferSentText, GiftHelper.FormatGrams(value), Formatter.DateAt(transaction.ExpirationDate)));
+
+                ToastPopup.Show(xamlRoot, text, ToastPopupIcon.Forward);
+                _ = ReportFailureAsync(xamlRoot, result.Outcome, string.Format(Strings.GiftOnchainOfferFailed, name), null);
+
+                return true;
+            }
+        }
 
         /// <summary>
         /// True while an offer's buttons ignore taps.
@@ -746,7 +874,7 @@ namespace Telegram.Common
         {
             if (!await outcome)
             {
-                onFailed();
+                onFailed?.Invoke();
                 ToastPopup.Show(xamlRoot, failed, ToastPopupIcon.Error);
             }
         }
@@ -778,10 +906,15 @@ namespace Telegram.Common
 
             if (basisPoints > 0)
             {
-                popup.AddRow(Strings.GiftOnchainOfferRowPlatformFee, string.Format("{0} ({1}%)", GiftHelper.FormatGrams(fee), (basisPoints / 100d).ToString("0.##")));
+                popup.AddRow(Strings.GiftOnchainOfferRowPlatformFee, FormatFee(fee, basisPoints));
             }
 
             popup.AddRow(Strings.GiftOnchainRowYouReceive, GiftHelper.FormatGrams(amount - fee));
+        }
+
+        private static string FormatFee(long fee, int basisPoints)
+        {
+            return string.Format("{0} ({1}%)", GiftHelper.FormatGrams(fee), (basisPoints / 100d).ToString("0.##"));
         }
 
         private static void AddAttributes(GiftOnChainConfirmPopup popup, UpgradedGift gift)

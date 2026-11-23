@@ -1631,7 +1631,11 @@ namespace Telegram.Views.Stars.Popups
                 flyout.CreateFlyoutItem(CopyLink, Strings.CopyLink, Icons.Link);
                 flyout.CreateFlyoutItem(Share, Strings.ShareFile, Icons.Share);
 
-                if (upgraded.CanSendPurchaseOffer)
+                if (!_owned && GiftOnChainHelper.CanSendOffer(_clientService, upgraded))
+                {
+                    flyout.CreateFlyoutItem(OfferToBuyOnChain, Strings.GiftOfferToBuyMenu, Icons.Coin);
+                }
+                else if (upgraded.CanSendPurchaseOffer)
                 {
                     flyout.CreateFlyoutItem(OfferToBuy, Strings.GiftOfferToBuyMenu, Icons.Coin);
                 }
@@ -2068,6 +2072,24 @@ namespace Telegram.Views.Stars.Popups
             {
                 Hide();
                 await _navigationService.ShowPopupAsync(new BuyPopup(), BuyStarsArgs.ForChannel(needed.StarCount, 0));
+            }
+        }
+
+        private async void OfferToBuyOnChain()
+        {
+            if (_gift.Gift is not SentGiftUpgraded upgraded)
+            {
+                return;
+            }
+
+            // A gift in a wallet nobody has linked to an account has only the name its owner gave.
+            var ownerName = upgraded.Gift.OwnerId != null
+                ? _clientService.GetTitle(upgraded.Gift.OwnerId, true)
+                : upgraded.Gift.OwnerName;
+
+            if (await GiftOnChainHelper.SendOfferAsync(_clientService, _navigationService, upgraded.Gift, ownerName))
+            {
+                Hide();
             }
         }
 

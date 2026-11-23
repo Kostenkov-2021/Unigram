@@ -92,6 +92,7 @@
                      BeforeTextChanging="Label_BeforeTextChanging"
                      KeyDown="Label_KeyDown"
                      Style="{StaticResource NoDeleteTextBoxStyle}"
+                     Padding="36,5,6,6"
                      Grid.ColumnSpan="2" />
             <controls:PremiumStarCount x:Name="StarCount"
                                        HorizontalAlignment="Center"
@@ -125,6 +126,14 @@
                        Style="{StaticResource CaptionTextBlockStyle}"
                        TextWrapping="Wrap"
                        Visibility="Collapsed" />
+            <TextBlock x:Name="InsufficientText"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       TextWrapping="Wrap"
+                       Visibility="Collapsed">
+                <Run x:Name="InsufficientRun" /><Hyperlink Click="Deposit_Click"
+                                                         UnderlineStyle="None"><Run x:Name="DepositRun" /></Hyperlink>
+            </TextBlock>
         </Grid>
 
         <TextBlock Text="{CustomResource GiftOfferDuration}"
