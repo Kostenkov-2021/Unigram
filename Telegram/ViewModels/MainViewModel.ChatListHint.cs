@@ -7,9 +7,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 using Telegram.Common;
 using Telegram.Controls;
+using Telegram.Controls.Media;
 using Telegram.Td;
 using Telegram.Td.Api;
 using Telegram.ViewModels.Premium;
@@ -17,6 +19,7 @@ using Telegram.Views.Premium.Popups;
 using Telegram.Views.Settings;
 using Telegram.Views.Settings.Popups;
 using Telegram.Views.Settings.Privacy;
+using Telegram.Views.Stars.Popups;
 using Windows.UI.Xaml.Controls;
 
 namespace Telegram.ViewModels
@@ -26,6 +29,7 @@ namespace Telegram.ViewModels
         AddLoginPasskey,
         ExtendPremium,
         Custom,
+        ExtendStarSubscriptions,
         BirthdaysToday,
         SetBirthdate,
         GiftPremiumForChristmas,
@@ -70,6 +74,10 @@ namespace Telegram.ViewModels
         private int _premiumHintDiscount = -1;
         private bool _premiumStateRequested;
 
+        // Loaded once a session, the first time the suggestion is pending; the balance is read live.
+        private StarSubscriptions _expiringSubscriptions;
+        private bool _expiringSubscriptionsRequested;
+
         /// <summary>
         /// The one hint shown above the main chat list, picked in a fixed order of precedence.
         /// Null when there is none, or when the frozen account card takes the place.
@@ -96,7 +104,11 @@ namespace Telegram.ViewModels
                 return new ChatListHint(ChatListHintType.Custom, custom, custom.Title, custom.Description, true);
             }
 
-            // TODO: SuggestedActionExtendStarSubscriptions goes here.
+            if (ClientService.TryGetSuggestedAction(out SuggestedActionExtendStarSubscriptions extendStars) && TryGetMissingStarCount(out long missing, out string names))
+            {
+                var title = Locale.Declension(Strings.R.StarsSubscriptionExpiredHintTitle2, missing, names).ReplaceStar(Icons.Premium);
+                return new ChatListHint(ChatListHintType.ExtendStarSubscriptions, extendStars, title.AsFormattedText(), ClientEx.ParseMarkdown(Strings.StarsSubscriptionExpiredHintText), true);
+            }
 
             if (ClientService.IsPremiumAvailable && TryGetBirthdaysToday(out var birthdays))
             {
@@ -171,6 +183,81 @@ namespace Telegram.ViewModels
             }
 
             return senders != null;
+        }
+
+        private bool TryGetMissingStarCount(out long missing, out string names)
+        {
+            if (_expiringSubscriptions == null)
+            {
+                if (!_expiringSubscriptionsRequested)
+                {
+                    _expiringSubscriptionsRequested = true;
+                    LoadExpiringSubscriptions();
+                }
+
+                missing = 0;
+                names = null;
+                return false;
+            }
+
+            missing = GetExpiringSubscriptionsCost(out names, out _) - ClientService.OwnedStarCount.StarCount;
+            return missing > 0;
+        }
+
+        private async void LoadExpiringSubscriptions()
+        {
+            var response = await ClientService.SendAsync(new GetStarSubscriptions(true, string.Empty));
+            if (response is StarSubscriptions subscriptions)
+            {
+                _expiringSubscriptions = subscriptions;
+
+                // No update follows the answer, so the page is told to pick the hint again.
+                RaisePropertyChanged(nameof(GetChatListHint));
+            }
+            else
+            {
+                _expiringSubscriptionsRequested = false;
+            }
+        }
+
+        // A subscription counts only when its chat is known, since the chat's name goes in the title.
+        private long GetExpiringSubscriptionsCost(out string names, out long firstChatId)
+        {
+            var cost = 0L;
+            var builder = new StringBuilder();
+
+            firstChatId = 0;
+
+            foreach (var subscription in _expiringSubscriptions.Subscriptions)
+            {
+                if (firstChatId == 0)
+                {
+                    firstChatId = subscription.ChatId;
+                }
+
+                if (ClientService.TryGetChat(subscription.ChatId, out Chat chat))
+                {
+                    if (builder.Length > 0)
+                    {
+                        builder.Append(", ");
+                    }
+
+                    builder.Append(chat.Title);
+                    cost += subscription.Pricing.StarCount;
+                }
+            }
+
+            names = builder.ToString();
+            return cost;
+        }
+
+        private void ExtendStarSubscriptions()
+        {
+            if (_expiringSubscriptions != null)
+            {
+                var cost = GetExpiringSubscriptionsCost(out string names, out long firstChatId);
+                NavigationService.ShowPopup(new BuyPopup(), BuyStarsArgs.ForKeepSubscription(cost, names, firstChatId));
+            }
         }
 
         private bool TryGetPremiumHintDiscount(out int discount)
@@ -257,6 +344,9 @@ namespace Telegram.ViewModels
                     break;
                 case ChatListHintType.Custom when hint.Action is SuggestedActionCustom custom:
                     MessageHelper.OpenUrl(ClientService, NavigationService, custom.Url);
+                    break;
+                case ChatListHintType.ExtendStarSubscriptions:
+                    ExtendStarSubscriptions();
                     break;
                 case ChatListHintType.BirthdaysToday:
                     GiftBirthdays(hint.Users);

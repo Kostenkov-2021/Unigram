@@ -90,6 +90,7 @@
 
         <TextBlock x:Name="Title"
                    Style="{StaticResource BaseTextBlockStyle}"
+                   FontFamily="{ThemeResource EmojiThemeFontFamilyWithSymbols}"
                    Margin="8,6,0,0"
                    Grid.Column="1" />
 

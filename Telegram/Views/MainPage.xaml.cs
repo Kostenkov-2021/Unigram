@@ -814,6 +814,12 @@ namespace Telegram.Views
             }
         }
 
+        // The stars hint asks for what the balance lacks.
+        public void Handle(UpdateOwnedStarCount update)
+        {
+            this.BeginOnUIThread(UpdateBannerHints);
+        }
+
         public void Handle(UpdateOption update)
         {
             if (update.Name == OptionsService.R.ExpectBlocking || update.Name == OptionsService.R.EnabledProxyId)
@@ -1619,6 +1625,7 @@ namespace Telegram.Views
                 .Subscribe<UpdateSuggestedActions>(Handle)
                 .Subscribe<UpdateContactCloseBirthdays>(Handle)
                 .Subscribe<UpdateUserFullInfo>(Handle)
+                .Subscribe<UpdateOwnedStarCount>(Handle)
                 .Subscribe<UpdateActiveCall>(Handle)
                 .Subscribe<UpdateChatFoldersLayout>(Handle)
                 .Subscribe<UpdateNavigationBar>(Handle)

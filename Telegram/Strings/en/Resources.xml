@@ -7859,7 +7859,7 @@
 
     <string name="StarsNeededTextReactions">Buy **Stars** to send paid reactions to **{0}** and other channels.</string>
     <string name="StarsNeededTextBuySubscription">Buy **Stars** and subscribe to **{0}** and other channels.</string>
-
+    <string name="StarsNeededTextKeepSubscription">Buy **Stars** to keep your subscription to **{0}**.</string>
 
 
 
@@ -8175,6 +8175,9 @@
     <string name="StarsSubscriptionCancel">Cancel Subscription</string>
     <string name="StarsSubscriptionCancelInfo">If you cancel now, you will still be able to access your subscription until {0}.</string>
     <string name="StarsSubscriptionExpiredInfo">Your subscription expired on {0}.</string>
+    <string name="StarsSubscriptionExpiredHintTitle2_one">&#11088;&#65039;{0} Star needed for {1}</string>
+    <string name="StarsSubscriptionExpiredHintTitle2_other">&#11088;&#65039;{0} Stars needed for {1}</string>
+    <string name="StarsSubscriptionExpiredHintText">Insufficient funds to cover your subscription.</string>
     <string name="StarsSubscribeTitle">Subscribe to the Channel</string>
     <string name="StarsSubscribeText_one">Do you want to subscribe to **{1}** for **{0} Star** per month?</string>
     <string name="StarsSubscribeText_other">Do you want to subscribe to **{1}** for **{0} Stars** per month?</string>
@@ -10705,10 +10708,10 @@
     <string name="StarsSentText_two">You reacted with **{0}** stars.</string>
     <string name="StarsSentText_few">You reacted with **{0}** stars.</string>
     <string name="StarsSentText_many">You reacted with **{0}** stars.</string>
-
-
-
-
+    <string name="StarsSubscriptionExpiredHintTitle2_zero">&#11088;&#65039;{0} Stars needed for {1}</string>
+    <string name="StarsSubscriptionExpiredHintTitle2_two">&#11088;&#65039;{0} Stars needed for {1}</string>
+    <string name="StarsSubscriptionExpiredHintTitle2_few">&#11088;&#65039;{0} Stars needed for {1}</string>
+    <string name="StarsSubscriptionExpiredHintTitle2_many">&#11088;&#65039;{0} Stars needed for {1}</string>
 
 
 
