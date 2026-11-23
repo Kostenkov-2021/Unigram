@@ -1006,7 +1006,7 @@ namespace Telegram.Services.Wallet
                 null);
 
             var intent = new SendIntent(new SendExpiration.EngineDefault(), new[] { message });
-            var prepared = await client.PrepareTransfer(new PrepareTransferRequest(NewRecordId(), intent));
+            var prepared = await client.PrepareTransfer(new PrepareTransferRequest(NewRecordId(), intent, null));
 
             // Both messages cover the same seqno and expiry, so offering both is offering the server
             // a choice, not two transfers: whichever it broadcasts, the other can never also land.
@@ -1862,7 +1862,7 @@ namespace Telegram.Services.Wallet
 
             try
             {
-                prepared = await client.PrepareTransfer(new PrepareTransferRequest(NewRecordId(), send.Request.Intent));
+                prepared = await client.PrepareTransfer(new PrepareTransferRequest(NewRecordId(), send.Request.Intent, null));
             }
             catch (Exception ex) when (ex is not WalletAccessDeniedException)
             {
@@ -1987,7 +1987,7 @@ namespace Telegram.Services.Wallet
 
             try
             {
-                prepared = await client.PrepareTransfer(new PrepareTransferRequest(NewRecordId(), request.Intent));
+                prepared = await client.PrepareTransfer(new PrepareTransferRequest(NewRecordId(), request.Intent, null));
             }
             catch (WalletClientException ex) when (ex is WalletClientException.InvalidSendRequest or WalletClientException.EmulationRejected
                 or WalletClientException.InsufficientBalance or WalletClientException.InsufficientBalanceForFees)
