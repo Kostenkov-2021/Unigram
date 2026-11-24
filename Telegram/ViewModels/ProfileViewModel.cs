@@ -305,7 +305,7 @@ namespace Telegram.ViewModels
                     // Never the main tab and always last, so the strip is shown without it.
                     if (user.Type is UserTypeBot)
                     {
-                        AddPendingTab(LoadSimilarBotsTabAsync(), int.MaxValue);
+                        AddPendingTab(LoadSimilarBotsTabAsync(user.Id), int.MaxValue);
                     }
 
                     await UpdateSharedCountAsync(chat, tabs, mainTab);
@@ -337,7 +337,7 @@ namespace Telegram.ViewModels
 
                 if (typeSupergroup.IsChannel)
                 {
-                    AddPendingTab(LoadSimilarChannelsTabAsync(), int.MaxValue);
+                    AddPendingTab(LoadSimilarChannelsTabAsync(chat.Id), int.MaxValue);
                     await UpdateSharedCountAsync(chat, tabs, mainTab);
                 }
                 else
@@ -394,25 +394,24 @@ namespace Telegram.ViewModels
             await AddPendingTabsAsync();
         }
 
-        private async Task<ProfileTabItem> LoadSimilarBotsTabAsync()
+        // The count shares TDLib's cache with the list, so the tab's own load does not reach the server again.
+        private async Task<ProfileTabItem> LoadSimilarBotsTabAsync(long botUserId)
         {
-            await _botsTabViewModel.Items.LoadMoreItemsAsync(0);
-
-            if (_botsTabViewModel.Items.Count > 0)
+            var response = await ClientService.SendAsync(new GetBotSimilarBotCount(botUserId, false));
+            if (response is Count count && count.CountValue > 0)
             {
-                return new ProfileTabItem(new ProfileTabSimilarBots(), null, _botsTabViewModel.TotalCount, Strings.R.Bots);
+                return new ProfileTabItem(new ProfileTabSimilarBots(), null, count.CountValue, Strings.R.Bots);
             }
 
             return null;
         }
 
-        private async Task<ProfileTabItem> LoadSimilarChannelsTabAsync()
+        private async Task<ProfileTabItem> LoadSimilarChannelsTabAsync(long chatId)
         {
-            await _channelsTabViewModel.Items.LoadMoreItemsAsync(0);
-
-            if (_channelsTabViewModel.Items.Count > 0)
+            var response = await ClientService.SendAsync(new GetChatSimilarChatCount(chatId, false));
+            if (response is Count count && count.CountValue > 0)
             {
-                return new ProfileTabItem(new ProfileTabSimilarChannels(), null, _channelsTabViewModel.TotalCount, Strings.R.Channels);
+                return new ProfileTabItem(new ProfileTabSimilarChannels(), null, count.CountValue, Strings.R.Channels);
             }
 
             return null;
