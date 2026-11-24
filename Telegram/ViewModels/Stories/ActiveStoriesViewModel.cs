@@ -112,6 +112,18 @@ namespace Telegram.ViewModels.Stories
         /// </summary>
         public Func<StoryViewModel, bool> IsPinned { get; set; }
 
+        /// <summary>
+        /// How many stories the list this viewer was opened from holds, loaded or not; null when
+        /// it was not opened from one, and then the header shows no position.
+        /// </summary>
+        public Func<int> TotalCount { get; set; }
+
+        /// <summary>
+        /// The group a story's progress segment is drawn in, consecutive stories sharing it;
+        /// null when the whole list is one group.
+        /// </summary>
+        public Func<StoryViewModel, long> SegmentGroup { get; set; }
+
         public MessageDelegate Delegate => _messageDelegate;
 
         private StoryViewModel _selectedItem;

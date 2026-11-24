@@ -6378,6 +6378,13 @@
     <string name="StorySelectedContactsHint">Only some users **{0}** selected can view this story.</string>
     <string name="StoryContactsHint">Only **{0}’s** contacts can view this story.</string>
     <string name="ExpiredViewsStub">List of viewers becomes unavailable **24 hours** after the story expires.</string>
+    <string name="NoViews">No views</string>
+    <string name="NoViewsStub">No one has viewed this story so far.</string>
+    <string name="NoReactionsStub">No one has reacted to this story so far.</string>
+    <string name="NoContactsViewed">None of your contacts viewed this story.</string>
+    <string name="ServerErrorViewersTitle">Oops</string>
+    <string name="ServerErrorViewers">Information about the viewers wasn\'t recorded.</string>
+    <string name="ServerErrorViewersFull">Information about the other viewers wasn\'t recorded.</string>
     <string name="ArchivedStories">Archived Stories</string>
 
 

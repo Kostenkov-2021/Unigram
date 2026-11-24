@@ -106,7 +106,7 @@
 
             <local:StoryProgress x:Name="Progress"
                                  VerticalAlignment="Top"
-                                 Margin="8,6,6,0"
+                                 Margin="8,6,8,0"
                                  Canvas.ZIndex="1" />
 
             <Grid x:Name="InfoPanel"
@@ -150,6 +150,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="Title"
                                            Foreground="{ThemeResource PageHeaderForegroundBrush}"
@@ -163,6 +164,15 @@
                                                        VerticalAlignment="Bottom"
                                                        Margin="4,0,0,2"
                                                        Grid.Column="1" />
+
+                                <TextBlock x:Name="Position"
+                                           Foreground="{ThemeResource PageHeaderDisabledBrush}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           VerticalAlignment="Bottom"
+                                           Margin="8,0,0,1"
+                                           Visibility="Collapsed"
+                                           Typography.NumeralAlignment="Tabular"
+                                           Grid.Column="2" />
                             </Grid>
 
                             <Grid Grid.Row="1">
@@ -266,6 +276,23 @@
             </Grid>
 
             <Canvas x:Name="AreasPanel" />
+
+            <StackPanel x:Name="UnsupportedPanel"
+                        x:Load="False"
+                        VerticalAlignment="Center"
+                        Margin="72,0">
+                <TextBlock Text="{CustomResource StoryUnsupported}"
+                           Foreground="#FFFFFF"
+                           FontWeight="SemiBold"
+                           FontSize="16"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap" />
+                <Button Click="Unsupported_Click"
+                        Content="{CustomResource UpdateTelegram}"
+                        Style="{StaticResource AccentButtonStyle}"
+                        HorizontalAlignment="Stretch"
+                        Margin="0,24,0,0" />
+            </StackPanel>
 
             <Grid x:Name="CaptionRoot">
                 <Grid.RowDefinitions>

@@ -19,6 +19,7 @@ using Telegram.Common;
 using Telegram.Controls.Cells;
 using Telegram.Controls.Media;
 using Telegram.Controls.Messages;
+using Telegram.Controls.Messages.Service;
 using Telegram.Controls.Stories.Widgets;
 using Telegram.Converters;
 using Telegram.Native;
@@ -422,6 +423,16 @@ namespace Telegram.Controls.Stories
             PinnedIcon.Visibility = ViewModel.IsPinned?.Invoke(story) == true
                 ? Visibility.Visible
                 : Visibility.Collapsed;
+
+            if (ViewModel.TotalCount != null)
+            {
+                Position.Text = string.Format("{0}/{1}", 1 + ViewModel.Items.IndexOf(story), ViewModel.TotalCount());
+                Position.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                Position.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void Update(StoryViewModel story)
@@ -483,6 +494,23 @@ namespace Telegram.Controls.Stories
             {
                 Mute.Visibility = Visibility.Collapsed;
                 MutePlaceholder.Visibility = Visibility.Collapsed;
+            }
+            else if (story.Content is StoryContentUnsupported)
+            {
+                UpdateUnsupported(story);
+
+                Mute.Visibility = Visibility.Collapsed;
+                MutePlaceholder.Visibility = Visibility.Collapsed;
+            }
+
+            if (story.Content is StoryContentUnsupported)
+            {
+                FindName(nameof(UnsupportedPanel));
+                UnsupportedPanel.Visibility = Visibility.Visible;
+            }
+            else if (UnsupportedPanel != null)
+            {
+                UnsupportedPanel.Visibility = Visibility.Collapsed;
             }
 
             if (string.IsNullOrEmpty(story.Caption?.Text))
@@ -827,7 +855,7 @@ namespace Telegram.Controls.Stories
             {
                 var video = SelectVideoFile(videoContent);
 
-                Progress.Update(_viewModel.Items.IndexOf(_viewModel.SelectedItem), _viewModel.Items.Count, video.Duration);
+                UpdateProgress(video.Duration);
                 Play(video);
 
                 MessagesRoot.Visibility = Visibility.Collapsed;
@@ -874,10 +902,40 @@ namespace Telegram.Controls.Stories
             {
                 _timer.Stop();
                 _timer.Start();
-                Progress.Update(_viewModel.Items.IndexOf(_viewModel.SelectedItem), _viewModel.Items.Count, StoryContentPhotoTimer.Duration);
+                UpdateProgress(StoryContentPhotoTimer.Duration);
 
                 MessagesRoot.Visibility = Visibility.Collapsed;
             }
+        }
+
+        private void UpdateProgress(double duration)
+        {
+            var items = _viewModel.Items;
+            var index = items.IndexOf(_viewModel.SelectedItem);
+
+            var group = _viewModel.SegmentGroup;
+            if (group == null || index == -1)
+            {
+                Progress.Update(index, items.Count, duration);
+                return;
+            }
+
+            // Lists are in date order with pinned stories first, so a group is one run of the list.
+            var key = group(items[index]);
+            var first = index;
+            var last = index;
+
+            while (first > 0 && group(items[first - 1]) == key)
+            {
+                first--;
+            }
+
+            while (last < items.Count - 1 && group(items[last + 1]) == key)
+            {
+                last++;
+            }
+
+            Progress.Update(index - first, last - first + 1, duration);
         }
 
         private void OnFrameReceived(VoipVideoOutputSink sender, FrameReceivedEventArgs args)
@@ -1191,6 +1249,31 @@ namespace Telegram.Controls.Stories
             }
 
             _type = StoryType.Photo;
+        }
+
+        // Nothing to draw, so nothing of the story before may stay on screen: it runs on the
+        // photo timer, as a story that can't be played still has its turn.
+        private void UpdateUnsupported(StoryViewModel story)
+        {
+            UpdateManager.Unsubscribe(this, ref _fileToken);
+
+            _fileId = 0;
+
+            Texture1.Source = null;
+            Texture2.Source = null;
+
+            _player?.Stop();
+            _player?.Context.Clear();
+
+            UpdateThumbnail(story, null, null, true);
+            HideSkeleton();
+
+            _type = StoryType.Photo;
+        }
+
+        private void Unsupported_Click(object sender, RoutedEventArgs e)
+        {
+            _ = MessageUnsupportedContent.CheckForUpdatesAsync(XamlRoot, _viewModel?.ClientService);
         }
 
         private StoryType _type;
@@ -2510,11 +2593,16 @@ namespace Telegram.Controls.Stories
             Children.Clear();
             ColumnDefinitions.Clear();
 
+            // The gaps narrow as the segments do, down to a single physical pixel past 100.
+            var gap = count > 100
+                ? 1 / (XamlRoot?.RasterizationScale ?? 1)
+                : count >= 50 ? 1 : 2;
+
             for (int i = 0; i < count; i++)
             {
                 var rectangle = new Rectangle
                 {
-                    Margin = new Thickness(0, 2, 2, 2),
+                    Margin = new Thickness(i == 0 ? 0 : gap, 2, 0, 2),
                     Height = 2,
                     RadiusX = 1,
                     RadiusY = 1,

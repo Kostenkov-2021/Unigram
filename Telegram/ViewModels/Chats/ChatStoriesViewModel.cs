@@ -14,6 +14,7 @@ using Telegram.Collections;
 using Telegram.Common;
 using Telegram.Controls;
 using Telegram.Controls.Stories;
+using Telegram.Converters;
 using Telegram.Navigation;
 using Telegram.Navigation.Services;
 using Telegram.Services;
@@ -459,7 +460,9 @@ namespace Telegram.ViewModels.Chats
         {
             var activeStories = new ActiveStoriesViewModel(ClientService, Settings, Aggregator, story, ItemsView)
             {
-                IsPinned = IsPinned
+                IsPinned = IsPinned,
+                TotalCount = GetTotalCount,
+                SegmentGroup = GetSegmentGroup
             };
 
             var viewModel = StoryListViewModel.Create(NavigationService, activeStories);
@@ -551,6 +554,33 @@ namespace Telegram.ViewModels.Chats
         public bool ShowHint => !IsEmpty && _type == ChatStoriesType.Archive;
 
         private MutableVector<int> _pinnedStoryIds = Array.Empty<int>();
+
+        // Only the whole list is told its total: an album's is not loaded, so it counts what it has.
+        private int GetTotalCount()
+        {
+            return Math.Max(_selectedAlbum?.Items.TotalCount ?? 0, ItemsView.Count);
+        }
+
+        // A profile can hold thousands of stories, too many for a segment each: the pinned ones
+        // are one group, the rest one per local day, an album one in all and a bot preview its own.
+        private long GetSegmentGroup(StoryViewModel story)
+        {
+            if (_selectedAlbum?.Id > 0)
+            {
+                return 0;
+            }
+            else if (story.IsBotPreview)
+            {
+                return story.Id;
+            }
+            else if (IsPinned(story))
+            {
+                return -1;
+            }
+
+            var date = Formatter.ToLocalTime(story.Date);
+            return date.Year * 10000L + date.Month * 100L + date.Day;
+        }
 
         public bool IsPinned(StoryViewModel story)
         {
