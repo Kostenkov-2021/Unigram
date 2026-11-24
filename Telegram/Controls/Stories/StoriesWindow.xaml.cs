@@ -167,6 +167,12 @@ namespace Telegram.Controls.Stories
                 return;
             }
 
+            if (ActiveCard?.TryCollapseCaption() is true)
+            {
+                e.Handled = true;
+                return;
+            }
+
             _done = true;
             e.Handled = true;
 

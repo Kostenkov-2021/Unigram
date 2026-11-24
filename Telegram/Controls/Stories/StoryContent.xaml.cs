@@ -81,6 +81,11 @@ namespace Telegram.Controls.Stories
 
             _messagesVisual = CompositionDevice.GetElementLayerVisual(MessagesHost);
 
+            // Handled ones too: a press on a link or on selectable text is handled by the text
+            // before it gets here, and every press still has to stop short of ActiveRoot.
+            CaptionPanel.AddHandler(PointerPressedEvent, new PointerEventHandler(CaptionPanel_PointerPressed), true);
+            ElementComposition.GetElementVisual(CaptionOverlay).Opacity = 0;
+
             SizeChanged += OnSizeChanged;
             Disconnected += OnUnloaded;
         }
@@ -120,6 +125,9 @@ namespace Telegram.Controls.Stories
             }
 
             DiscardGroupCall();
+
+            _captionSelection?.Detach();
+            _captionSelection = null;
         }
 
         private void DiscardGroupCall()
@@ -147,14 +155,21 @@ namespace Telegram.Controls.Stories
 
         private void CollapseCaption()
         {
-            Overflow.MaxLines = 1;
-            ShowMore.Visibility = Overflow.MaxLines == 1 && Caption.HasOverflowContent
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+            _captionExpanded = false;
+            _captionAnimate = false;
+            _state &= ~StoryPauseSource.Caption;
 
-            Grid.SetRow(CaptionExpand, 1);
+            CaptionScroll.Visibility = Visibility.Collapsed;
+            CaptionCollapsed.IsHitTestVisible = true;
+            CaptionOverlay.IsHitTestVisible = false;
 
-            CaptionOverlay.Visibility = Visibility.Collapsed;
+            var collapsed = ElementComposition.GetElementVisual(CaptionCollapsed);
+            collapsed.StopAnimation("Opacity");
+            collapsed.Opacity = 1;
+
+            var overlay = ElementComposition.GetElementVisual(CaptionOverlay);
+            overlay.StopAnimation("Opacity");
+            overlay.Opacity = 0;
         }
 
         private void OnSizeChanged(object sender, SizeChangedEventArgs e)
@@ -171,6 +186,11 @@ namespace Telegram.Controls.Stories
             if (_loading)
             {
                 ShowSkeleton();
+            }
+
+            if (_captionExpanded)
+            {
+                UpdateCaptionMaxHeight();
             }
 
             UpdateAreas();
@@ -469,12 +489,26 @@ namespace Telegram.Controls.Stories
             {
                 CaptionRoot.Visibility = Visibility.Collapsed;
                 Caption.Clear();
+                CaptionCollapsed.Clear();
+
+                _captionSource = null;
+                _captionText = null;
+                _captionTrimmed = false;
             }
-            else
+            else if (story.Caption != _captionSource)
             {
+                _captionSource = story.Caption;
+                _captionText = TextStyleRun.GetText(story.Caption);
+                _captionClientService = story.ClientService;
+                _captionWidth = 0;
+
                 CaptionRoot.Visibility = Visibility.Visible;
-                Caption.SetText(story.ClientService, story.Caption);
-                Overflow.LayoutUpdated += Overflow_LayoutUpdated;
+                Caption.SetText(story.ClientService, _captionText);
+
+                // Before the panel has a width there is nothing to cut against, and the
+                // previous story's caption must not show meanwhile: the first SizeChanged cuts it.
+                CaptionCollapsed.Clear();
+                UpdateCollapsedCaption(CaptionPanel.ActualWidth - CaptionPanel.Padding.Left - CaptionPanel.Padding.Right);
             }
 
             UpdateAreas();
@@ -1413,7 +1447,7 @@ namespace Telegram.Controls.Stories
                 //translation.Duration = TimeSpan.FromSeconds(5);
 
                 var entranceY = compositor.CreateScalarKeyFrameAnimation();
-                entranceY.InsertKeyFrame(show ? 0 : 1, -Caption.ActualSize.Y * 5);
+                entranceY.InsertKeyFrame(show ? 0 : 1, -CaptionCollapsed.ActualSize.Y * 5);
                 entranceY.InsertKeyFrame(show ? 1 : 0, 0);
                 //entranceY.Duration = TimeSpan.FromSeconds(5);
 
@@ -1472,7 +1506,7 @@ namespace Telegram.Controls.Stories
                 //translation.Duration = TimeSpan.FromSeconds(5);
 
                 var entranceY = compositor.CreateScalarKeyFrameAnimation();
-                entranceY.InsertKeyFrame(show ? 0 : 1, -Caption.ActualSize.Y * 5);
+                entranceY.InsertKeyFrame(show ? 0 : 1, -CaptionCollapsed.ActualSize.Y * 5);
                 entranceY.InsertKeyFrame(show ? 1 : 0, 0);
                 //entranceY.Duration = TimeSpan.FromSeconds(5);
 
@@ -1759,87 +1793,306 @@ namespace Telegram.Controls.Stories
             Mute.IsChecked = !muted;
         }
 
-        private void Caption_Click(object sender, RoutedEventArgs e)
+        #region Caption
+
+        private const int CaptionMaxLines = 3;
+
+        // How far below the top of the story an open caption stops, scrolling past that.
+        private const double CaptionExpandedInset = 64;
+
+        // What a quote or a code block takes from the width of its text: the 3 px bar of
+        // BlockQuote's template and the 8 + 24 horizontal padding MessageTextBlock gives it.
+        private const double CaptionBlockChrome = 3 + 8 + 24;
+
+        // DirectWrite measures the cut and XAML draws it, and the two round differently: a
+        // token that fits to the pixel in one can wrap in the other.
+        private const double CaptionTokenSlack = 2;
+
+        private FormattedText _captionSource;
+        private StyledText _captionText;
+        private IClientService _captionClientService;
+        private double _captionWidth;
+        private bool _captionTrimmed;
+        private bool _captionExpanded;
+        private bool _captionAnimate;
+        private bool _captionEntityClicked;
+        private TextSelectionManager _captionSelection;
+
+        private void UpdateCollapsedCaption(double width)
         {
-            Overflow.MaxLines = Overflow.MaxLines == 0 ? 1 : 0;
-            ShowMore.Visibility = Overflow.MaxLines == 1 && Caption.HasOverflowContent
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-
-            Grid.SetRow(CaptionExpand, Overflow.MaxLines == 0 ? 0 : 1);
-
-            CaptionOverlay.Visibility = Visibility.Visible;
-
-            CaptionPanel.SizeChanged -= CaptionPanel_SizeChanged_1;
-            CaptionPanel.SizeChanged += CaptionPanel_SizeChanged_1;
-
-            if (Overflow.MaxLines == 0)
+            if (_captionText == null || width <= 0 || width == _captionWidth)
             {
-                Suspend(StoryPauseSource.Caption);
+                return;
+            }
+
+            _captionWidth = width;
+
+            var trimmed = TrimCaption(_captionText, width, CaptionMaxLines);
+            _captionTrimmed = trimmed != null;
+
+            if (trimmed != null)
+            {
+                CaptionCollapsed.SetText(_captionClientService, trimmed);
             }
             else
             {
-                Resume(StoryPauseSource.Caption);
+                CaptionCollapsed.SetText(_captionClientService, _captionText);
             }
         }
 
-        private void SizeMore_SizeChanged(object sender, SizeChangedEventArgs e)
+        // The caption cut to maxLines lines, the last of them ending in "… Show more", or null
+        // when it fits. Every line of text costs one wherever it is, a quote's included; a code
+        // block's language header is not a line. The block the cut falls in keeps its box, and
+        // the token goes inside it, at the end of that block's last visible line.
+        private static FormattedText TrimCaption(StyledText styled, double width, int maxLines)
         {
-            //CaptionPanel.ColumnDefinitions[0].MaxWidth = ActualWidth - ShowMore.ActualWidth;
-            //CaptionPanel.ColumnDefinitions[1].MinWidth = ShowMore.ActualWidth;
+            var scale = BootStrapper.Current.TextScaleFactor;
+            var messageSize = AppSettings.Appearance.MessageFontSize * scale;
+            var quoteSize = AppSettings.Appearance.CaptionFontSize * scale;
 
-            var visual = ElementComposition.GetElementVisual(ShowMore);
-            ElementCompositionPreview.SetIsTranslationEnabled(ShowMore, true);
+            var paragraphs = styled.Paragraphs;
+            var remaining = maxLines;
 
-            var width = CaptionPanel.ActualSize.X - 24;
-            var offset = width - ShowMore.ActualSize.X;
+            for (int i = 0; i < paragraphs.Count; i++)
+            {
+                var paragraph = paragraphs[i];
+                var size = paragraph.Type is TextParagraphTypeQuote ? quoteSize : messageSize;
+                var layoutWidth = paragraph.Type != null ? width - CaptionBlockChrome : width;
+                var rtl = paragraph.Direction == TextDirectionality.RightToLeft;
 
-            var diff = offset - Overflow.ActualSize.X;
+                TextFormat format = null;
+                var lines = 1;
 
-            visual.Properties.InsertVector3("Translation", new Vector3(-diff, 0, 0));
+                if (paragraph.Length > 0)
+                {
+                    format = Direct2D.Current.CreateTextFormat2(paragraph.Text, paragraph.Parts ?? TextStyleRun.NoParts, size, layoutWidth);
+                    lines = Math.Max(1, format.LineMetrics(0, paragraph.Length, size, layoutWidth, rtl, true).Length);
+                }
+
+                if (lines < remaining || (lines == remaining && i == paragraphs.Count - 1))
+                {
+                    remaining -= lines;
+                    continue;
+                }
+
+                var monospace = paragraph.Type is TextParagraphTypeMonospace;
+                var reserve = MeasureCaptionToken(size, monospace) + CaptionTokenSlack;
+
+                var cut = format?.TrimLine(size, layoutWidth, rtl, remaining - 1, reserve) ?? 0;
+                if (cut < 0)
+                {
+                    cut = paragraph.Length;
+                }
+
+                while (cut > 0 && char.IsWhiteSpace(paragraph.Text[cut - 1]))
+                {
+                    cut--;
+                }
+
+                return AppendCaptionToken(styled.Substring(0, paragraph.Offset + cut), cut == 0);
+            }
+
+            return null;
         }
 
-        private void Overflow_LayoutUpdated(object sender, object e)
+        private static FormattedText AppendCaptionToken(FormattedText text, bool emptyLine)
         {
-            Overflow.LayoutUpdated -= Overflow_LayoutUpdated;
+            var ellipsis = emptyLine ? string.Empty : "… ";
+            var token = ellipsis + Strings.ShowMore;
+            var end = text.Text.Length;
 
-            var visual = ElementComposition.GetElementVisual(ShowMore);
-            ElementCompositionPreview.SetIsTranslationEnabled(ShowMore, true);
+            var entities = new MutableVector<TextEntity>(text.Entities.Count + 1);
 
-            var width = CaptionPanel.ActualSize.X - 24;
-            var offset = width - ShowMore.ActualSize.X;
+            foreach (var entity in text.Entities)
+            {
+                // The quote or code block the cut ends in has to hold the token, or the token
+                // would be a paragraph of its own under the box.
+                if (entity.Offset + entity.Length == end && entity.Type is TextEntityTypeBlockQuote or TextEntityTypeExpandableBlockQuote or TextEntityTypePre or TextEntityTypePreCode)
+                {
+                    entities.Add(new TextEntity(entity.Offset, entity.Length + token.Length, entity.Type));
+                }
+                else
+                {
+                    entities.Add(entity);
+                }
+            }
 
-            var diff = offset - Overflow.ActualSize.X;
+            entities.Add(new TextEntity(end + ellipsis.Length, Strings.ShowMore.Length, new TextEntityTypeBold()));
 
-            visual.Properties.InsertVector3("Translation", new Vector3(-diff, 0, 0));
-
-            ShowMore.Visibility = Overflow.MaxLines == 1 && Caption.HasOverflowContent
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+            return new FormattedText(text.Text + token, entities);
         }
 
-        private void CaptionPanel_SizeChanged_1(object sender, SizeChangedEventArgs e)
+        private static double MeasureCaptionToken(double fontSize, bool monospace)
         {
-            CaptionPanel.SizeChanged -= CaptionPanel_SizeChanged_1;
-            ElementCompositionPreview.SetIsTranslationEnabled(CaptionPanel, true);
+            var ellipsis = "… ";
+            var token = ellipsis + Strings.ShowMore;
 
-            var prev = e.PreviousSize.ToVector2();
-            var next = e.NewSize.ToVector2();
+            var parts = new List<TextStylePart>(2)
+            {
+                new TextStylePart
+                {
+                    Offset = ellipsis.Length,
+                    Length = Strings.ShowMore.Length,
+                    Type = monospace ? TextStyle.Bold | TextStyle.Monospace : TextStyle.Bold
+                }
+            };
 
-            var overlay = ElementComposition.GetElementVisual(CaptionOverlay);
-            var visual = ElementComposition.GetElementVisual(CaptionPanel);
+            if (monospace)
+            {
+                parts.Add(new TextStylePart
+                {
+                    Offset = 0,
+                    Length = ellipsis.Length,
+                    Type = TextStyle.Monospace
+                });
+            }
+
+            var format = Direct2D.Current.CreateTextFormat2(token, parts, fontSize, 100000);
+            return format.ContentWidths(fontSize, 100000, false).Y;
+        }
+
+        private void UpdateCaptionMaxHeight()
+        {
+            var padding = CaptionPanel.Padding;
+            CaptionScroll.MaxHeight = Math.Max(0, CaptionRoot.ActualHeight - CaptionExpandedInset - padding.Top - padding.Bottom);
+        }
+
+        private void ExpandCaption()
+        {
+            if (_captionExpanded || !_captionTrimmed)
+            {
+                return;
+            }
+
+            _captionExpanded = true;
+
+            UpdateCaptionMaxHeight();
+            CaptionScroll.ChangeView(null, 0, null, true);
+            CaptionScroll.Visibility = Visibility.Visible;
+            CaptionCollapsed.IsHitTestVisible = false;
+            CaptionOverlay.IsHitTestVisible = true;
+
+            _captionSelection ??= new TextSelectionManager(this, Caption, handleContextMenu: true);
+
+            AnimateCaption(true);
+            Suspend(StoryPauseSource.Caption);
+        }
+
+        /// <summary>
+        /// Closes the caption if it is open, which is what going back does first.
+        /// </summary>
+        public bool TryCollapseCaption()
+        {
+            if (!_captionExpanded)
+            {
+                return false;
+            }
+
+            _captionExpanded = false;
+
+            CaptionScroll.Visibility = Visibility.Collapsed;
+            CaptionCollapsed.IsHitTestVisible = true;
+            CaptionOverlay.IsHitTestVisible = false;
+
+            AnimateCaption(false);
+            Resume(StoryPauseSource.Caption);
+            return true;
+        }
+
+        // The two copies share their first lines, so fading one into the other while the panel
+        // slides to its new height reads as the text staying put and the rest appearing.
+        private void AnimateCaption(bool expand)
+        {
+            _captionAnimate = true;
+
+            FadeCaptionPart(CaptionOverlay, expand);
+            FadeCaptionPart(CaptionCollapsed, !expand);
+
+            if (expand)
+            {
+                FadeCaptionPart(CaptionScroll, true);
+            }
+        }
+
+        private static void FadeCaptionPart(UIElement element, bool show)
+        {
+            var visual = ElementComposition.GetElementVisual(element);
 
             var opacity = visual.Compositor.CreateScalarKeyFrameAnimation();
-            opacity.InsertKeyFrame(0, Overflow.MaxLines == 0 ? 0 : 1);
-            opacity.InsertKeyFrame(0, Overflow.MaxLines == 0 ? 1 : 0);
+            opacity.InsertKeyFrame(0, show ? 0 : 1);
+            opacity.InsertKeyFrame(1, show ? 1 : 0);
+            opacity.Duration = TimeSpan.FromMilliseconds(250);
 
-            var translation = visual.Compositor.CreateScalarKeyFrameAnimation();
-            translation.InsertKeyFrame(0, next.Y - prev.Y);
-            translation.InsertKeyFrame(1, 0);
-
-            overlay.StartAnimation("Opacity", opacity);
-            visual.StartAnimation("Translation.Y", translation);
+            visual.StartAnimation("Opacity", opacity);
         }
+
+        private void CaptionPanel_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            var padding = CaptionPanel.Padding;
+            UpdateCollapsedCaption(e.NewSize.Width - padding.Left - padding.Right);
+
+            if (_captionAnimate)
+            {
+                _captionAnimate = false;
+
+                // Anchored at the bottom, the panel grows and shrinks at the top: it starts
+                // where its top was and slides there.
+                ElementCompositionPreview.SetIsTranslationEnabled(CaptionPanel, true);
+
+                var visual = ElementComposition.GetElementVisual(CaptionPanel);
+
+                var translation = visual.Compositor.CreateScalarKeyFrameAnimation();
+                translation.InsertKeyFrame(0, (float)(e.NewSize.Height - e.PreviousSize.Height));
+                translation.InsertKeyFrame(1, 0);
+                translation.Duration = TimeSpan.FromMilliseconds(250);
+
+                visual.StartAnimation("Translation.Y", translation);
+            }
+        }
+
+        private void CaptionPanel_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            _captionEntityClicked = false;
+
+            // Held anywhere else on the story, a press hides its chrome until released.
+            e.Handled = true;
+        }
+
+        private void CaptionPanel_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+        {
+            // The window moves between stories on the wheel. Over an open caption the wheel
+            // scrolls it, and at either end of it does nothing rather than leave the story.
+            if (_captionExpanded)
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void CaptionPanel_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            // Open, a click on the text is the start or the end of a selection. Tapped follows
+            // the Click of the link under the pointer, which has opened it.
+            if (_captionExpanded || _captionEntityClicked)
+            {
+                _captionEntityClicked = false;
+                return;
+            }
+
+            ExpandCaption();
+        }
+
+        private void CaptionOverlay_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            e.Handled = true;
+        }
+
+        private void CaptionOverlay_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            TryCollapseCaption();
+            e.Handled = true;
+        }
+
+        #endregion
 
         private void InactivePanel_SizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -1857,6 +2110,8 @@ namespace Telegram.Controls.Stories
 
         private void Caption_TextEntityClick(object sender, TextEntityClickEventArgs e)
         {
+            _captionEntityClicked = true;
+
             if (e.Type is TextEntityTypeBotCommand && e.Text is string command)
             {
                 ViewModel.Delegate.SendBotCommand(command);

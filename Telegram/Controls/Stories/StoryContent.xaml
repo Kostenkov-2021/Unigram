@@ -6,6 +6,7 @@
                         xmlns:controls="using:Telegram.Controls"
                         xmlns:cells="using:Telegram.Controls.Cells"
                         xmlns:local="using:Telegram.Controls.Stories"
+                        xmlns:messages="using:Telegram.Controls.Messages"
                         xmlns:common="using:Telegram.Common"
                         mc:Ignorable="d"
                         d:DesignHeight="300"
@@ -284,52 +285,34 @@
                 </Rectangle>
 
                 <Rectangle x:Name="CaptionOverlay"
-                           Visibility="Collapsed"
                            Fill="#7F000000"
+                           IsHitTestVisible="False"
+                           PointerPressed="CaptionOverlay_PointerPressed"
+                           Tapped="CaptionOverlay_Tapped"
                            Grid.RowSpan="2" />
 
                 <Grid x:Name="CaptionPanel"
-                      SizeChanged="SizeMore_SizeChanged"
+                      Background="Transparent"
+                      SizeChanged="CaptionPanel_SizeChanged"
+                      Tapped="CaptionPanel_Tapped"
+                      PointerWheelChanged="CaptionPanel_PointerWheelChanged"
                       Padding="12,8"
                       Grid.Row="1">
+                    <ScrollViewer x:Name="CaptionScroll"
+                                  VerticalScrollBarVisibility="Auto"
+                                  VerticalScrollMode="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  HorizontalScrollMode="Disabled"
+                                  Margin="0,0,-12,0"
+                                  Visibility="Collapsed">
+                        <messages:MessageTextBlock x:Name="Caption"
+                                                   TextEntityClick="Caption_TextEntityClick"
+                                                   Margin="0,0,12,0" />
+                    </ScrollViewer>
 
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <controls:FormattedTextBlock x:Name="Caption"
-                                                 MaxLines="2"
-                                                 TextTrimming="CharacterEllipsis"
-                                                 OverflowContentTarget="{x:Bind Overflow}"
-                                                 TextEntityClick="Caption_TextEntityClick"
-                                                 Grid.ColumnSpan="2" />
-                    <RichTextBlockOverflow x:Name="Overflow"
-                                           HorizontalAlignment="Left"
-                                           MaxLines="1"
-                                           Grid.Row="1" />
-
-                    <TextBlock x:Name="ShowMore"
-                               FontWeight="SemiBold"
-                               HorizontalAlignment="Left"
-                               SizeChanged="SizeMore_SizeChanged"
-                               Grid.Column="1"
-                               Grid.Row="1">
-                        <Run />
-                        <Run Text="{CustomResource ShowMore}" />
-                    </TextBlock>
-
+                    <messages:MessageTextBlock x:Name="CaptionCollapsed"
+                                               TextEntityClick="Caption_TextEntityClick" />
                 </Grid>
-
-                <HyperlinkButton x:Name="CaptionExpand"
-                                 Click="Caption_Click"
-                                 HorizontalAlignment="Stretch"
-                                 VerticalAlignment="Stretch"
-                                 Opacity="0"
-                                 Grid.Row="1" />
             </Grid>
 
             <Grid x:Name="MessagesRoot">
