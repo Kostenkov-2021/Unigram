@@ -714,6 +714,9 @@ namespace Telegram.Common
                 case InternalLinkTypeBotAddToChannel botAddToChannel:
                     NavigateToBotAddToChannel(clientService, navigation, botAddToChannel.BotUsername, botAddToChannel.AdministratorRights);
                     break;
+                case InternalLinkTypeBotInvite botInvite:
+                    NavigateToBotInvite(clientService, navigation, botInvite.BotUsername);
+                    break;
                 case InternalLinkTypeDirectMessagesChat directMessagesChat:
                     NavigateToDirectMessagesChat(clientService, navigation, directMessagesChat.ChannelUsername);
                     break;
@@ -1421,6 +1424,26 @@ namespace Telegram.Common
             if (response is Chat chat && clientService.TryGetUser(chat, out User botUser))
             {
                 navigation.ShowPopup(new ChooseChatsPopup(), new ChooseChatsConfigurationBotAddToChannel(botUser.Id, administratorRights));
+            }
+        }
+
+        private static async void NavigateToBotInvite(IClientService clientService, INavigationService navigation, string botUsername)
+        {
+            var response = await clientService.SendAsync(new SearchPublicChat(botUsername));
+            if (response is Chat chat && clientService.TryGetUser(chat, out User botUser) && botUser.Type is UserTypeBot bot)
+            {
+                if (bot.CanBeEdited)
+                {
+                    navigation.ShowPopup(new ChooseChatsPopup(), new ChooseChatsConfigurationInviteToBot(botUser.Id));
+                }
+                else
+                {
+                    navigation.ShowToast(string.Format(Strings.BotInviteErrorNotOwner, chat.Title), ToastPopupIcon.Info);
+                }
+            }
+            else
+            {
+                navigation.ShowToast(Strings.NoUsernameFound, ToastPopupIcon.Info);
             }
         }
 

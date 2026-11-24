@@ -25,7 +25,6 @@ namespace Telegram.ViewModels.Delegates
         void UpdateChatTextCompositionParameters(Chat chat);
         void UpdateChatMessageAutoDeleteTime(Chat chat);
         void UpdateChatPermissions(Chat chat);
-        void UpdateChatActionBar(Chat chat);
         void UpdateChatHasScheduledMessages(Chat chat);
         void UpdateChatReplyMarkup(Chat chat, MessageViewModel message);
         void UpdateChatUnreadMentionCount(Chat chat, int unreadMentionCount);

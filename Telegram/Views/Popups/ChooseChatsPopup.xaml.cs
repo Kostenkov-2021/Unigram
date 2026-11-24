@@ -697,6 +697,19 @@ namespace Telegram.Views.Popups
         }
     }
 
+    public partial class ChooseChatsConfigurationInviteToBot : ChooseChatsConfiguration
+    {
+        // inviteUsersToBot takes 1-10 users.
+        public const int MaxQuantity = 10;
+
+        public ChooseChatsConfigurationInviteToBot(long botUserId)
+        {
+            BotUserId = botUserId;
+        }
+
+        public long BotUserId { get; }
+    }
+
     public partial class ChooseChatsConfigurationShareStory : ChooseChatsConfiguration
     {
         public ChooseChatsConfigurationShareStory(long chatId, int storyId)
@@ -1911,6 +1924,7 @@ namespace Telegram.Views.Popups
             var maxQuantity = ViewModel.Configuration switch
             {
                 ChooseChatsConfigurationRequestUsers requestUsers => requestUsers.MaxQuantity,
+                ChooseChatsConfigurationInviteToBot => ChooseChatsConfigurationInviteToBot.MaxQuantity,
                 ChooseChatsConfigurationCreateGroupCall => ViewModel.ClientService.Options.GroupCallParticipantCountMax,
                 _ => int.MaxValue
             };

@@ -39,6 +39,7 @@ namespace Telegram.Controls.Messages
             {
                 MessageBasicGroupChatCreate basicGroupChatCreate => UpdateBasicGroupChatCreate(message, basicGroupChatCreate, history),
                 MessageBotWriteAccessAllowed botWriteAccessAllowed => UpdateBotWriteAccessAllowed(message, botWriteAccessAllowed, history),
+                MessageBotInvite botInvite => UpdateBotInvite(message, botInvite, history),
                 MessageChatAddMembers chatAddMembers => UpdateChatAddMembers(message, chatAddMembers, history),
                 MessageChatAddedToCommunity chatAddedToCommunity => UpdateChatAddedToCommunity(message, chatAddedToCommunity, history),
                 MessageChatRemovedFromCommunity chatRemovedFromCommunity => UpdateChatRemovedFromCommunity(message, chatRemovedFromCommunity, history),
@@ -831,6 +832,16 @@ namespace Telegram.Controls.Messages
             }
 
             return Strings.ActionBotAllowedWebapp.AsFormattedText();
+        }
+
+        private static FormattedText UpdateBotInvite(MessageWithOwner message, MessageBotInvite botInvite, bool history)
+        {
+            if (message.ClientService.TryGetUser(botInvite.InviterUserId, out User inviter))
+            {
+                return ReplaceWithLink(Strings.ActionBotInvite, inviter);
+            }
+
+            return Strings.ActionBotInviteUnknown.AsFormattedText();
         }
 
         private static FormattedText UpdateChatAddMembers(MessageWithOwner message, MessageChatAddMembers chatAddMembers, bool history)

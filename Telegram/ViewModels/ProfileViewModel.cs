@@ -241,6 +241,7 @@ namespace Telegram.ViewModels
                 .Subscribe<UpdateChatEmojiStatus>(Handle)
                 .Subscribe<UpdateChatAccentColors>(Handle)
                 .Subscribe<UpdateChatActiveStories>(Handle)
+                .Subscribe<UpdateChatActionBar>(Handle)
                 .Subscribe<UpdateChatNotificationSettings>(Handle);
         }
 
@@ -662,6 +663,14 @@ namespace Telegram.ViewModels
             }
         }
 
+        public void Handle(UpdateChatActionBar update)
+        {
+            if (update.ChatId == _chat?.Id)
+            {
+                BeginOnUIThread(() => Delegate?.UpdateChatActionBar(_chat));
+            }
+        }
+
         public async void SendMessage()
         {
             var chat = _chat;
@@ -1036,6 +1045,14 @@ namespace Telegram.ViewModels
             else
             {
                 MembersTab.Add();
+            }
+        }
+
+        public void InviteToBot()
+        {
+            if (ClientService.TryGetUser(_chat, out User user) && user.Type is UserTypeBot { CanBeEdited: true })
+            {
+                ShowPopup(new ChooseChatsPopup(), new ChooseChatsConfigurationInviteToBot(user.Id));
             }
         }
 

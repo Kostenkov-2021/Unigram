@@ -189,6 +189,28 @@ namespace Telegram.ViewModels
                         break;
                     }
 
+                case ChooseChatsConfigurationInviteToBot:
+                    SelectionMode = ListViewSelectionMode.Multiple;
+                    Options = new ChooseChatsOptions()
+                    {
+                        AllowChannelChats = false,
+                        AllowGroupChats = false,
+                        AllowBotChats = false,
+                        AllowUserChats = true,
+                        AllowSecretChats = false,
+                        AllowSelf = false,
+                        CanPostMessages = false,
+                        CanInviteUsers = false,
+                        CanShareContact = false,
+                        Mode = ChooseChatsMode.Chats,
+                        ShowMessages = false
+                    };
+                    PrimaryButtonText = Strings.Done;
+                    IsCommentEnabled = false;
+                    IsChatSelection = false;
+
+                    Title = Strings.BotInviteToBot;
+                    break;
                 case ChooseChatsConfigurationShareStory:
                     SelectionMode = ListViewSelectionMode.Multiple;
                     Options = ChooseChatsOptions.PostMessages;
@@ -895,6 +917,41 @@ namespace Telegram.ViewModels
             {
                 ClientService.Send(new SetChatTheme(chats[0].Id, new InputChatThemeGift(setTheme.Gift.Name)));
                 NavigationService.NavigateToChat(chats[0]);
+            }
+            else if (_configuration is ChooseChatsConfigurationInviteToBot inviteToBot && ClientService.TryGetUser(inviteToBot.BotUserId, out User bot))
+            {
+                var users = chats
+                    .Select(x => ClientService.GetUser(x))
+                    .Where(x => x != null)
+                    .ToList();
+
+                if (users.Count == 0)
+                {
+                    return;
+                }
+
+                var response = await ClientService.SendAsync(new InviteUsersToBot(bot.Id, users.Select(x => x.Id).ToVector()));
+                if (response is Ok)
+                {
+                    ShowToast(users.Count == 1
+                        ? string.Format(Strings.BotInviteDone, users[0].FullName(), bot.FirstName)
+                        : Locale.Declension(Strings.R.BotInviteDoneMany, users.Count, bot.FirstName), ToastPopupIcon.Success);
+                }
+                else if (response is Error error)
+                {
+                    // The errors are not documented: one that says the chat already exists is told
+                    // apart by its text, anything else is a refusal.
+                    if (error.Message.Contains("ALREADY"))
+                    {
+                        ShowToast(users.Count == 1
+                            ? string.Format(Strings.BotInviteErrorAlreadyStarted, users[0].FullName(), bot.FirstName)
+                            : string.Format(Strings.BotInviteErrorAlreadyStartedMany, bot.FirstName), ToastPopupIcon.Info);
+                    }
+                    else
+                    {
+                        ShowToast(string.Format(Strings.BotInviteErrorFailed, bot.FirstName), ToastPopupIcon.Error);
+                    }
+                }
             }
             else if (_configuration is ChooseChatsConfigurationInviteToChat inviteToChat && ClientService.TryGetChat(inviteToChat.ChatId, out Chat chat))
             {

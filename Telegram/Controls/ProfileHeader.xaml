@@ -505,6 +505,16 @@
                     </controls:SettingsButton.Description>
                 </controls:SettingsButton>
 
+                <controls:SettingsButton x:Name="BotInvite"
+                                         Visibility="Collapsed"
+                                         Glyph="&#xE8FA;">
+                    <controls:FormattedTextBlock x:Name="BotInviteLabel"
+                                                 TextEntityClick="About_TextEntityClick"
+                                                 FontFamily="{ThemeResource EmojiThemeFontFamily}"
+                                                 IsTextSelectionEnabled="False"
+                                                 AutoFontSize="False" />
+                </controls:SettingsButton>
+
                 <controls:SettingsButton x:Name="UserBirthday"
                                          Visibility="Collapsed"
                                          Click="Birthday_Click"
@@ -681,6 +691,20 @@
                                          Click="{x:Bind ViewModel.Edit}"
                                          Glyph="&#xE9E9;"
                                          IsChevronVisible="True"
+                                         Visibility="Collapsed" />
+            </controls:HeaderedControl>
+
+            <controls:HeaderedControl x:Name="BotActionsRoot"
+                                      Visibility="Collapsed">
+                <controls:SettingsButton x:Name="InviteToBot"
+                                         Content="{CustomResource BotInviteToBot}"
+                                         Click="{x:Bind ViewModel.InviteToBot}"
+                                         Glyph="&#xE8FA;"
+                                         Visibility="Collapsed" />
+                <controls:SettingsButton x:Name="AddToGroup"
+                                         Content="{CustomResource AddToGroupOrChannel}"
+                                         Click="{x:Bind ViewModel.Invite}"
+                                         Glyph="&#xE716;"
                                          Visibility="Collapsed" />
             </controls:HeaderedControl>
 

@@ -706,6 +706,10 @@ namespace Telegram.Controls.Messages.Content
             {
                 ShowButton(Strings.BoostLinkButton);
             }
+            else if (linkPreview.Type is LinkPreviewTypeBotInvite)
+            {
+                ShowButton(Strings.BotInviteToBot);
+            }
             else if (linkPreview.Type is LinkPreviewTypeStickerSet stickerSet)
             {
                 if (stickerSet.Stickers.Count > 0 && stickerSet.Stickers[0].FullType is StickerFullTypeCustomEmoji)

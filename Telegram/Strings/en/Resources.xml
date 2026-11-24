@@ -4969,6 +4969,7 @@
     <string name="AddToGroup">Add to Group</string>
     <string name="AddToChannel">Add to Channel</string>
     <string name="AddToGroupOrChannel">Add to Group or Channel</string>
+    <string name="BotAddToGroupOrChannelInfo">This bot is able to manage a group or channel.</string>
 
     <string name="Dismiss">Dismiss</string>
 
@@ -14108,6 +14109,18 @@
     <string name="CreateManagedBotLimitTextTime">You can create another bot in {0}.</string>
     <string name="CreateManagedBotLimitTextPremium">Subscribe to **Premium** to create up to {0} bots, or delete one of your {1} bots via @BotFather</string>
     <string name="CreateManagedBotLimitText">You can create up to {0} bots, or delete your current ones via @BotFather</string>
+    <string name="BotInviteToBot">Invite to Bot</string>
+    <string name="BotInviteDone">**{0}** was invited to **{1}**.</string>
+    <string name="BotInviteDoneMany_one">{0} user was invited to **{1}**.</string>
+    <string name="BotInviteDoneMany_other">{0} users were invited to **{1}**.</string>
+    <string name="BotInviteErrorAlreadyStarted">**{0}** already has a chat with **{1}**.</string>
+    <string name="BotInviteErrorAlreadyStartedMany">These users already have a chat with **{0}**.</string>
+    <string name="BotInviteErrorFailed">Sorry, you can\'t invite these users to **{0}**.</string>
+    <string name="BotInviteErrorNotOwner">Only the owner of **{0}** can invite users to it.</string>
+    <string name="ActionBotInvite">un1 invited you to this bot</string>
+    <string name="ActionBotInviteUnknown">You were invited to this bot</string>
+    <string name="ProfileBotInvitedBy">Invited by: **{0}**</string>
+    <string name="ProfileBotCurrentOwner">Current bot owner: **{0}**</string>
 
     <string name="AudioSearchLocal">Local Music</string>
     <string name="AudioSearchChats">Shared Music</string>
@@ -14892,6 +14905,10 @@
 
   <!-- new from translations.telegram.org -->
 
+  <string name="BotInviteDoneMany_zero">{0} users were invited to **{1}**.</string>
+  <string name="BotInviteDoneMany_two">{0} users were invited to **{1}**.</string>
+  <string name="BotInviteDoneMany_few">{0} users were invited to **{1}**.</string>
+  <string name="BotInviteDoneMany_many">{0} users were invited to **{1}**.</string>
   <string name="ShortcutsImportIgnored_zero">{0} entries ignored</string>
   <string name="ShortcutsImportIgnored_two">{0} entries ignored</string>
   <string name="ShortcutsImportIgnored_few">{0} entries ignored</string>

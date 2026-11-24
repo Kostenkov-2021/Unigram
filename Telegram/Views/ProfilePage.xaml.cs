@@ -344,6 +344,11 @@ namespace Telegram.Views
             ProfileHeader.UpdateChatEmojiStatus(chat);
         }
 
+        public void UpdateChatActionBar(Chat chat)
+        {
+            ProfileHeader.UpdateChatActionBar(chat);
+        }
+
         public void UpdateChatAccentColors(Chat chat)
         {
             ProfileHeader.UpdateChatAccentColors(chat);

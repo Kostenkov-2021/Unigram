@@ -609,6 +609,7 @@ namespace Telegram.Controls
             UpdateChatActiveStories(chat);
 
             UpdateChatNotificationSettings(chat);
+            UpdateChatActionBar(chat);
 
             if (AppSettings.Diagnostics.ShowIds)
             {
@@ -744,6 +745,36 @@ namespace Telegram.Controls
                 : (_filledIcons ? Icons.AlertFilled : Icons.Alert);
         }
 
+        public void UpdateChatActionBar(Chat chat)
+        {
+            if (chat.ActionBar is ChatActionBarBotInvite botInvite && ViewModel.ClientService.TryGetUser(botInvite.InviterUserId, out User inviter))
+            {
+                var text = FormatUserLink(Strings.ProfileBotInvitedBy, inviter);
+
+                if (ViewModel.ClientService.TryGetUser(botInvite.OwnerUserId, out User owner))
+                {
+                    text = FormattedText.Concat(text, "\n", FormatUserLink(Strings.ProfileBotCurrentOwner, owner));
+                }
+
+                BotInviteLabel.SetText(ViewModel.ClientService, text);
+                BotInvite.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                BotInvite.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private static FormattedText FormatUserLink(string format, User user)
+        {
+            // The markup is parsed before the name goes in, so markdown in a name stays literal,
+            // and a run the translation wraps around the placeholder grows to cover the name.
+            var builder = new FormattedTextBuilder(ClientEx.ParseMarkdown(format));
+            builder.Substitute("{0}", user.FullName(), new TextEntityTypeMentionName(user.Id));
+
+            return builder.ToFormattedText();
+        }
+
         public void UpdateUserFullInfo(Chat chat, User user, UserFullInfo fullInfo, bool secret, bool accessToken)
         {
             UpdateUserStatus(chat, user);
@@ -816,6 +847,20 @@ namespace Telegram.Controls
                     BotMainApp.Visibility = Visibility.Collapsed;
                     InfoPanel.Footer = string.Empty;
                 }
+
+                InviteToBot.Visibility = userTypeBot.CanBeEdited
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+                AddToGroup.Visibility = userTypeBot.CanJoinGroups
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+
+                BotActionsRoot.Footer = userTypeBot.CanJoinGroups
+                    ? Strings.BotAddToGroupOrChannelInfo
+                    : string.Empty;
+                BotActionsRoot.Visibility = userTypeBot.CanBeEdited || userTypeBot.CanJoinGroups
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
             }
             else
             {
@@ -823,6 +868,7 @@ namespace Telegram.Controls
                 BotMainApp.Visibility = Visibility.Collapsed;
                 Statistics.Visibility = Visibility.Collapsed;
                 AffiliateProgram.Visibility = Visibility.Collapsed;
+                BotActionsRoot.Visibility = Visibility.Collapsed;
             }
 
             // Unused:
@@ -1187,6 +1233,7 @@ namespace Telegram.Controls
             VideoCall.Visibility = Visibility.Collapsed;
 
             BotMainApp.Visibility = Visibility.Collapsed;
+            BotActionsRoot.Visibility = Visibility.Collapsed;
 
             AnonymousNumber.Visibility = Visibility.Collapsed;
             AnonymousNumberSeparator.Visibility = Visibility.Collapsed;
@@ -1336,6 +1383,7 @@ namespace Telegram.Controls
 
             // Unused:
             BotMainApp.Visibility = Visibility.Collapsed;
+            BotActionsRoot.Visibility = Visibility.Collapsed;
             MiscPanel.Visibility = Visibility.Collapsed;
             UserPhone.Visibility = Visibility.Collapsed;
             //UserCommonChats.Visibility = Visibility.Collapsed;
@@ -1572,13 +1620,8 @@ namespace Telegram.Controls
                     }
                     else
                     {
-                        if (user.Type is UserTypeBot bot)
+                        if (user.Type is UserTypeBot)
                         {
-                            if (bot.CanJoinGroups)
-                            {
-                                flyout.CreateFlyoutItem(ViewModel.Invite, Strings.BotInvite, Icons.PersonAdd);
-                            }
-
                             flyout.CreateFlyoutItem(() => { }, Strings.BotShare, Icons.Share);
                             flyout.CreateFlyoutItem(ViewModel.PrivacyPolicy, Strings.BotPrivacyPolicy, Icons.ShieldCheckmark);
                         }
