@@ -2323,7 +2323,7 @@ namespace Telegram.Controls.Stories
             var confirm = await ViewModel.ShowPopupAsync(popup);
             if (confirm == ContentDialogResult.Primary)
             {
-                if (popup.DeleteAll.Any())
+                if (popup.DeleteAllMessages.Any())
                 {
                     ViewModel.ClientService.Send(new DeleteGroupCallMessagesBySender(_call.Id, message.SenderId, popup.ReportSpam.Any()));
                 }

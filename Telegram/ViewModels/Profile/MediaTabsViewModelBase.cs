@@ -361,9 +361,14 @@ namespace Telegram.ViewModels.Profile
                 ClientService.Send(new DeleteMessages(group.Key, group.Select(x => x.Id).ToVector(), revoke));
             }
 
-            foreach (var sender in popup.DeleteAll)
+            foreach (var sender in popup.DeleteAllMessages)
             {
                 ClientService.Send(new DeleteChatMessagesBySender(chat.Id, sender));
+            }
+
+            foreach (var sender in popup.DeleteAllReactions)
+            {
+                ClientService.Send(new DeleteAllRecentMessageReactionsFromSender(chat.Id, sender));
             }
 
             foreach (var sender in popup.BanUser)
