@@ -856,6 +856,8 @@ namespace Telegram.Controls.Chats
             Logger.Info($"Focus returned {moved}");
         }
 
+        private bool IsResetting => ItemsSource is ISynchronizedList { IsResetting: true };
+
         private async Task ScrollIntoViewAsync(MessageViewModel item, ScrollIntoViewAlignment alignment, bool fastPath)
         {
             if (ItemsPanelRoot == null)
@@ -867,7 +869,7 @@ namespace Telegram.Controls.Chats
                 {
                     Logger.Info("ItemsPanelRoot == null, UpdateLayout");
 
-                    if (CollectionResetScope.InProgress)
+                    if (IsResetting)
                     {
                         Logger.Error("UpdateLayout during a reset");
                     }
@@ -895,7 +897,7 @@ namespace Telegram.Controls.Chats
             // 1.4-stable/dxaml/xcp/dxaml/lib/ModernCollectionBasePanel_WindowManagement_Partial.cpp#L2138
             if (fastPath)
             {
-                if (CollectionResetScope.InProgress)
+                if (IsResetting)
                 {
                     Logger.Error("ScrollIntoView and UpdateLayout during a reset");
                 }
@@ -933,7 +935,7 @@ namespace Telegram.Controls.Chats
                 }
             }
 
-            if (CollectionResetScope.InProgress)
+            if (IsResetting)
             {
                 Logger.Error("ScrollIntoView during a reset");
             }

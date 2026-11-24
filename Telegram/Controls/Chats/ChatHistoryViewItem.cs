@@ -70,6 +70,14 @@ namespace Telegram.Controls.Chats
             }
         }
 
+        /// <summary>
+        /// Recycled during a reset, with the content not yet told: ChatView does that once the reset
+        /// is over, or before the container is used again.
+        /// </summary>
+        public bool IsContentRecycleOwed { get; set; }
+
+        public bool IsHeaderUnreadOwed { get; set; }
+
         private MessageBubbleBackgroundBrush _brush;
 
         /// <summary>

@@ -400,10 +400,37 @@ namespace Telegram.Collections
 
         /// <summary>
         /// True where an items host is bound to this collection, so a reset it raises is dispatched
-        /// straight into a virtualizing panel. Only those are worth counting: a reset on a source
-        /// the view never sees nests inside one that reaches the view as a matter of course.
+        /// straight into a virtualizing panel.
         /// </summary>
         protected virtual bool TracksResetReentrancy => false;
+
+        private int _resetDepth;
+
+        /// <summary>
+        /// True while a reset this collection raised has not yet returned from the panel bound to it.
+        /// </summary>
+        /// <remarks>
+        /// ModernCollectionBasePanel handles a reset inside a cache session (CacheStrongRefs) that
+        /// carries no nesting count, so a re-entrant call into any of the fourteen entry points that
+        /// open one - a synchronous measure, ScrollIntoView, another collection change - closes the
+        /// session the reset is still inside. The pinned container walk that follows the recycling
+        /// then dereferences the host that was just released, which is a fail-fast rather than an
+        /// exception, because the AV escapes a P/Invoke. A contended managed lock on the UI thread
+        /// is enough to get there: it waits through CoWaitForMultipleHandles, which runs a whole XAML
+        /// tick. Whatever the recycling would do that can wait goes to <see cref="OnResetCompleted"/>
+        /// instead.
+        ///
+        /// Counted per collection, not per thread: on WinUI every window shares one thread, and a
+        /// reset in one chat says nothing about the panel of another.
+        /// </remarks>
+        public bool IsResetting => _resetDepth > 0;
+
+        /// <summary>
+        /// Called once the outermost reset has returned from the panel.
+        /// </summary>
+        protected virtual void OnResetCompleted()
+        {
+        }
 
         /// <summary>
         /// Raises the CollectionChanged event with the provided event data.
@@ -422,12 +449,12 @@ namespace Telegram.Collections
                 return;
             }
 
-            if (CollectionResetScope.InProgress)
+            if (_resetDepth > 0)
             {
-                Logger.Error($"Nested reset, depth {CollectionResetScope.Depth + 1}");
+                Logger.Error($"Nested reset, depth {_resetDepth + 1}");
             }
 
-            CollectionResetScope.Enter();
+            _resetDepth++;
 
             try
             {
@@ -435,46 +462,25 @@ namespace Telegram.Collections
             }
             finally
             {
-                CollectionResetScope.Exit();
+                if (--_resetDepth == 0)
+                {
+                    // This runs in the reset's finally, where a throw would replace whatever the
+                    // reset itself was unwinding with.
+                    try
+                    {
+                        OnResetCompleted();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error(ex.ToString());
+                    }
+                }
             }
         }
 
         public void RaiseCollectionChanged(NotifyCollectionChangedEventArgs args)
         {
             OnCollectionChanged(args);
-        }
-    }
-
-    /// <summary>
-    /// How deep, on this thread, we are inside a reset that reaches a virtualizing panel.
-    /// </summary>
-    /// <remarks>
-    /// Diagnostics only: nothing here prevents anything. ModernCollectionBasePanel handles a reset
-    /// inside a cache session (CacheStrongRefs) that carries no nesting count, so a re-entrant call
-    /// into any of the fourteen entry points that open one - a synchronous measure, ScrollIntoView,
-    /// another collection change - closes the session the reset is still inside. The pinned
-    /// container walk that follows the recycling then dereferences the host that was just released,
-    /// which is a fail-fast rather than an exception, because the AV escapes a P/Invoke. Reading
-    /// this at every call of ours that could open a second session is what names the culprit in a
-    /// crash report.
-    /// </remarks>
-    public static class CollectionResetScope
-    {
-        [ThreadStatic]
-        private static int _depth;
-
-        public static bool InProgress => _depth > 0;
-
-        public static int Depth => _depth;
-
-        public static void Enter()
-        {
-            _depth++;
-        }
-
-        public static void Exit()
-        {
-            _depth--;
         }
     }
 }

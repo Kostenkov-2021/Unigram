@@ -1335,7 +1335,13 @@ namespace Telegram.Views
                         relevantHashSet.Retyped++;
                         relevantHashSet.TotalCount++;
 
-                        if (selector.ContentTemplateRoot is MessageSelector discarded)
+                        // The template is about to be replaced, so whatever is owed to the old
+                        // content has to reach it now.
+                        if (selector.IsContentRecycleOwed)
+                        {
+                            RecycleContent(selector, selector.IsHeaderUnreadOwed);
+                        }
+                        else if (selector.ContentTemplateRoot is MessageSelector discarded)
                         {
                             discarded.Recycle();
                         }
@@ -1411,23 +1417,20 @@ namespace Telegram.Views
                 // XAML has indicated that the item is no longer being shown, so add it to the recycle queue
                 _typeToStrategy[container.TypeName].Queue.Add(args.ItemContainer);
 
-                if (args.ItemContainer.ContentTemplateRoot is MessageSelector selector)
+                // Inside a reset this runs before the panel walks its pinned containers, and the
+                // content's teardown takes locks it shares with decode, reader and TDLib threads
+                // (see RangeObservableCollection.IsResetting). So it waits for the reset to return,
+                // or for the container to be used again, whichever comes first.
+                if (_messages.IsResetting)
                 {
-                    selector.Recycle();
+                    container.IsContentRecycleOwed = true;
+                    container.IsHeaderUnreadOwed = message.Content is MessageHeaderUnread;
 
-                    if (_sizeChangedHandler != null)
-                    {
-                        selector.SizeChanged -= _sizeChangedHandler;
-                    }
+                    _contentRecycleOwed.Add(container);
                 }
-                else if (args.ItemContainer.ContentTemplateRoot is MessageService service)
+                else
                 {
-                    service.Recycle();
-                }
-
-                if (message.Content is MessageHeaderUnread)
-                {
-                    args.ItemContainer.EffectiveViewportChanged -= HeaderUnread_EffectiveViewportChanged;
+                    RecycleContent(container, message.Content is MessageHeaderUnread);
                 }
 
                 if (_oldestItem == container)
@@ -1450,9 +1453,14 @@ namespace Telegram.Views
             }
             else
             {
+                if (container.IsContentRecycleOwed)
+                {
+                    RecycleContent(container, container.IsHeaderUnreadOwed);
+                }
+
                 // A reset only recycles; a container prepared inside one means a layout ran nested
                 // in it, from whatever opened the way - our own call, or a wait that pumped messages.
-                if (CollectionResetScope.InProgress)
+                if (_messages.IsResetting)
                 {
                     Logger.Error("Container prepared during a reset");
                 }
@@ -1563,6 +1571,48 @@ namespace Telegram.Views
 
         private ContextRequestedHandler _contextRequestedHandler;
         private SizeChangedEventHandler _sizeChangedHandler;
+
+        private readonly List<ChatHistoryViewItem> _contentRecycleOwed = new();
+
+        private void RecycleContent(ChatHistoryViewItem container, bool headerUnread)
+        {
+            container.IsContentRecycleOwed = false;
+
+            if (container.ContentTemplateRoot is MessageSelector selector)
+            {
+                selector.Recycle();
+
+                if (_sizeChangedHandler != null)
+                {
+                    selector.SizeChanged -= _sizeChangedHandler;
+                }
+            }
+            else if (container.ContentTemplateRoot is MessageService service)
+            {
+                service.Recycle();
+            }
+
+            if (headerUnread)
+            {
+                container.EffectiveViewportChanged -= HeaderUnread_EffectiveViewportChanged;
+            }
+        }
+
+        public void ResetCompleted()
+        {
+            // By index, because a recycle that raises a reset of its own appends to this list
+            // while it is being walked. Containers settled in the meantime by a prepare are skipped.
+            for (int i = 0; i < _contentRecycleOwed.Count; i++)
+            {
+                var container = _contentRecycleOwed[i];
+                if (container.IsContentRecycleOwed)
+                {
+                    RecycleContent(container, container.IsHeaderUnreadOwed);
+                }
+            }
+
+            _contentRecycleOwed.Clear();
+        }
 
         private void OnPreparingContainerForItem(object sender, ChatHistoryViewItem selector)
         {
