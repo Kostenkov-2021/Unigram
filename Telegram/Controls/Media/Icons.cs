@@ -389,6 +389,7 @@ namespace Telegram.Controls.Media
         public const string EmojiAdd = "\uE9ED";
 
         public const string Stories = "\uE9D3";
+        public const string StoriesAdd = "\uF7BA";
         public const string ExpiredStory = "\uE9E5";
 
         public const string Rewind524 = "\uEA31";

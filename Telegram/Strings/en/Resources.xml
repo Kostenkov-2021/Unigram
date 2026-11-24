@@ -6130,6 +6130,7 @@
 
     <string name="MyStory">My Story</string>
     <string name="AddStory">Add Story</string>
+    <string name="RecorderNewStory">New Story</string>
     <string name="StoryPrivacyAlertTitle">Share story</string>
     <string name="StoryPrivacyWhoCanView">Who can view your story</string>
     <string name="StoryPrivacyOptionEveryone">Everyone</string>

@@ -3681,6 +3681,7 @@ namespace Telegram.Views
             }
 
             flyout.CreateFlyoutSeparator();
+            flyout.CreateFlyoutItem(MenuItemNewStory, Strings.RecorderNewStory, Icons.StoriesAdd);
             flyout.CreateFlyoutItem(MenuItemCreateGroup, Strings.NewGroup, Icons.People);
 
             if (ViewModel.Session.Settings.HideArchivedChats)
@@ -3782,6 +3783,11 @@ namespace Telegram.Views
         private void MenuItemCalls()
         {
             ViewModel.NavigationService.ShowPopup(new CallsPopup());
+        }
+
+        private void MenuItemNewStory()
+        {
+            ViewModel.Stories.AddStory();
         }
 
         private void MenuItemCreateGroup()
