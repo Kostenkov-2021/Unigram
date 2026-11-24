@@ -2579,10 +2579,11 @@
 
 
 
-
-
-
+    <string name="CheckPhoneNumber">Is {0} still your number?</string>
+    <string name="CheckPhoneNumberInfo">Keep your number up to date to ensure you can always log into Telegram. **Learn more**</string>
+    <string name="CheckPhoneNumberLearnMoreUrl">https://telegram.org/faq#q-i-have-a-new-phone-number-what-do-i-do</string>
     <string name="CheckPhoneNumberYes">Yes</string>
+    <string name="CheckPhoneNumberYes2">&#128077; Yes</string>
     <string name="CheckPhoneNumberNo">No</string>
     <!--cache view-->
     <string name="LocalDatabase">Local Database</string>
@@ -3187,20 +3188,20 @@
     <string name="SetAdditionalPassword">Set Additional Password</string>
     <string name="SetAdditionalPasswordInfo">You can set a password that will be required when you log in on a new device in addition to the code you get via SMS.</string>
     <string name="YourPassword">Your Password</string>
-
-
-
-
+    <string name="YourPasswordHeader">Your password</string>
+    <string name="YourPasswordRemember">Your account is protected by 2-Step Verification.\nDo you still remember your password?</string>
+    <string name="YourPasswordRememberYes">Yes, definitely</string>
+    <string name="YourPasswordRememberNo">Not sure</string>
 
 
     <string name="EnterPassword">Enter password</string>
 
 
 
+    <string name="CheckPasswordPerfect">Perfect!</string>
+    <string name="CheckPasswordPerfectInfo">You still remember your password.</string>
 
-
-
-
+    <string name="CheckPasswordBackToSettings">Back to Settings</string>
     <string name="PleaseEnterCurrentPasswordTransfer">Please enter your password to complete the transfer.</string>
     <string name="PleaseEnterCurrentPasswordWithdraw">Please enter your password to collect.</string>
 
@@ -7716,9 +7717,9 @@
     <string name="ShowAdsInfo">As a Premium subscriber, you don’t see any ads on Telegram, but you can turn them on, for example, to view your own ads that you launched on the **Telegram Ad Platform &gt;**</string>
     <string name="GraceTitle">&#9888;&#65039; Your Premium subscription is expiring!</string>
     <string name="GraceMessage">Don’t lose access to exclusive features.</string>
-
-
-
+    <string name="GraceSuggestionTitle">Access to Telegram Premium is expiring!</string>
+    <string name="GraceSuggestionMessage">&#9888;&#65039; Unfortunately, your latest payment didn’t come through. To keep your access to exclusive features, please renew the subscription.</string>
+    <string name="GraceSuggestionButton">Restore Subscription</string>
 
 
 

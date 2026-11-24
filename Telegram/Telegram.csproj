@@ -676,6 +676,9 @@
     <Compile Include="Controls\ChatListHintCard.xaml.cs">
       <DependentUpon>ChatListHintCard.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\SettingsSuggestionCard.xaml.cs">
+      <DependentUpon>SettingsSuggestionCard.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\TabbedPageHeader.xaml.cs">
       <DependentUpon>TabbedPageHeader.xaml</DependentUpon>
     </Compile>
@@ -2617,6 +2620,7 @@
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.ChatListHint.cs" />
     <Compile Include="ViewModels\SettingsViewModel.cs" />
+    <Compile Include="ViewModels\SettingsViewModel.Suggestion.cs" />
     <Compile Include="ViewModels\Settings\SettingsSessionsViewModel.cs" />
     <Compile Include="ViewModels\Settings\SettingsStorageViewModel.cs" />
     <Compile Include="ViewModels\Settings\SettingsUsernameViewModel.cs" />
@@ -3847,6 +3851,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Controls\Stories\Widgets\StoryWeatherWidget.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\SettingsSuggestionCard.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

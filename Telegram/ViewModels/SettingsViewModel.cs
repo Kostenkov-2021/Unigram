@@ -78,6 +78,7 @@ namespace Telegram.ViewModels
                 ClientService.Send(new GetUserFullInfo(item.Id));
             }
 
+            UpdateSuggestion();
             return Task.CompletedTask;
         }
 
@@ -88,6 +89,7 @@ namespace Telegram.ViewModels
                 .Subscribe<UpdateOwnedStarCount>(Handle)
                 .Subscribe<UpdateOwnedGramCount>(Handle)
                 .Subscribe<UpdateTonWalletState>(Handle)
+                .Subscribe<UpdateSuggestedActions>(Handle)
                 .Subscribe<UpdateOption>(Handle);
         }
 

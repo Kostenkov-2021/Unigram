@@ -251,7 +251,31 @@ namespace Telegram.Views
         {
         }
 
+        public void UpdateSuggestion(SettingsSuggestion suggestion)
+        {
+            if (suggestion != null)
+            {
+                FindName(nameof(SuggestionCard));
+                SuggestionCard.Visibility = Visibility.Visible;
+                SuggestionCard.Update(suggestion);
+            }
+            else if (SuggestionCard != null)
+            {
+                SuggestionCard.Visibility = Visibility.Collapsed;
+            }
+        }
+
         #endregion
+
+        private void SuggestionCard_NoClick(object sender, RoutedEventArgs e)
+        {
+            ViewModel.RefuseSuggestion(SuggestionCard.Suggestion);
+        }
+
+        private void SuggestionCard_YesClick(object sender, RoutedEventArgs e)
+        {
+            ViewModel.AcceptSuggestion(SuggestionCard.Suggestion);
+        }
 
         private void VersionLabel_Navigate(object sender, RoutedEventArgs e)
         {
