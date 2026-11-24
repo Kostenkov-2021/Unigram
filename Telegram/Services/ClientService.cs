@@ -27,6 +27,11 @@ namespace Telegram.Services
         void Close(bool restart);
         void Delete(bool restart);
 
+        /// <summary>
+        /// Closes TDLib for good and completes once it reports <see cref="AuthorizationStateClosed"/>.
+        /// </summary>
+        Task CloseAsync();
+
         //void Send(Function function);
         //void Send(Function function, ClientResultHandler handler);
         void Send(Function function, Action<Object> handler = null);
@@ -456,6 +461,8 @@ namespace Telegram.Services
         private bool _cleanAfterClose;
         private bool _initializeAfterClose;
 
+        private TaskCompletionSource<bool> _closed;
+
         private static readonly Thread _runThread;
 
         static ClientService()
@@ -518,6 +525,33 @@ namespace Telegram.Services
             _initializeAfterClose = restart;
             _cleanAfterClose = true;
             _client.Send(new Close());
+        }
+
+        public Task CloseAsync()
+        {
+            // RunContinuationsAsynchronously: it completes on the receive thread, which must not
+            // run whatever was waiting on it.
+            var closed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var pending = Interlocked.CompareExchange(ref _closed, closed, null);
+            if (pending != null)
+            {
+                return pending.Task;
+            }
+
+            // Read after the source is published, while the handler stores the state before it
+            // takes the source: one of the two always sees the other.
+            if (_authorizationState is AuthorizationStateClosed)
+            {
+                Interlocked.Exchange(ref _closed, null)?.TrySetResult(true);
+                return closed.Task;
+            }
+
+            // _cleanAfterClose is left alone, so a Delete already in flight still deletes.
+            _initializeAfterClose = false;
+            _client.Send(new Close());
+
+            return closed.Task;
         }
 
         private void Initialize(bool online = true)
@@ -3793,6 +3827,11 @@ namespace Telegram.Services
                     {
                         _authorizationStateTask.TrySetResult(true);
                         _authorizationState = updateAuthorizationState.AuthorizationState;
+                    }
+
+                    if (updateAuthorizationState.AuthorizationState is AuthorizationStateClosed)
+                    {
+                        Interlocked.Exchange(ref _closed, null)?.TrySetResult(true);
                     }
                     break;
                 case UpdateChatActiveStories updateActiveStories:

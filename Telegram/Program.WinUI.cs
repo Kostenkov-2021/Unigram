@@ -45,6 +45,16 @@ namespace Telegram
 
         private static DispatcherQueue _dispatcher;
 
+        // Redirected launches the dispatcher has queued and not run yet, and whether the process
+        // has decided to end. One lock, so neither can change while the other is read.
+        private static readonly object _exitLock = new();
+        private static int _pendingLaunches;
+        private static bool _exiting;
+
+        // Reset while the process is ending. A launch that arrives then waits on it in
+        // OnRedirected and never returns, unless the exit is called off.
+        private static readonly ManualResetEventSlim _takingLaunches = new(true);
+
         /// <summary>
         /// This process started after the user ended a running instance that took no launches.
         /// Read by App, which reports it once the crash reporter is up.
@@ -111,6 +121,45 @@ namespace Telegram
 
                 _ = new App();
             });
+
+            // Every Application.Exit ends up here: Exit on the notification area icon, the last
+            // window closing without it, an update. The process exit would otherwise end TDLib in
+            // the middle of whatever it was writing.
+            BeginExit(force: true);
+            LifetimeService.Current.CloseAll();
+        }
+
+        /// <summary>
+        /// Stops taking launches, because the process is about to end. False, and nothing changes,
+        /// when a redirected launch is still queued and about to open a window, unless
+        /// <paramref name="force"/> - which a restart is, as it brings the app back anyway.
+        /// </summary>
+        internal static bool BeginExit(bool force = false)
+        {
+            lock (_exitLock)
+            {
+                if (_pendingLaunches > 0 && !force)
+                {
+                    return false;
+                }
+
+                _exiting = true;
+                _takingLaunches.Reset();
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// The process is not ending after all, so the launches held since
+        /// <see cref="BeginExit"/> go through.
+        /// </summary>
+        internal static void CancelExit()
+        {
+            lock (_exitLock)
+            {
+                _exiting = false;
+                _takingLaunches.Set();
+            }
         }
 
         /// <summary>
@@ -121,16 +170,59 @@ namespace Telegram
         /// Brought back the way a click on the notification area icon does it, because the window
         /// may be gone: closing to the icon destroys it, and then there is no Main to raise and
         /// no window whose dispatcher could be used, so the UI thread's queue is kept from start.
+        ///
+        /// A process that is ending cannot take the launch, so this holds it and never returns:
+        /// the SDK answers the launching process only once this handler has, and that process
+        /// treats this one exiting first as its cue to start in its place - after TDLib has closed,
+        /// since that is the last thing this one does.
         /// </summary>
         private static void OnRedirected(object sender, AppActivationArguments args)
         {
-            if (args.Data is IProtocolActivatedEventArgs link)
+            while (true)
             {
-                _dispatcher?.TryEnqueue(() => BootStrapper.Current.ActivateFromLink(link));
+                _takingLaunches.Wait();
+
+                lock (_exitLock)
+                {
+                    if (_exiting)
+                    {
+                        continue;
+                    }
+
+                    var link = args.Data as IProtocolActivatedEventArgs;
+                    if (_dispatcher != null && _dispatcher.TryEnqueue(() => RunRedirected(link)))
+                    {
+                        _pendingLaunches++;
+                        return;
+                    }
+
+                    // The dispatcher is gone, so the process is ending whether it said so or not.
+                    _exiting = true;
+                    _takingLaunches.Reset();
+                }
+            }
+        }
+
+        private static void RunRedirected(IProtocolActivatedEventArgs link)
+        {
+            lock (_exitLock)
+            {
+                _pendingLaunches--;
+
+                // Only a restart exits with a launch queued, and it brings the app back itself.
+                if (_exiting)
+                {
+                    return;
+                }
+            }
+
+            if (link != null)
+            {
+                BootStrapper.Current.ActivateFromLink(link);
             }
             else
             {
-                _dispatcher?.TryEnqueue(BootStrapper.Current.ActivateFromNotifyIcon);
+                BootStrapper.Current.ActivateFromNotifyIcon();
             }
         }
 

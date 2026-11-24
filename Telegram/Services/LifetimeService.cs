@@ -372,6 +372,34 @@ namespace Telegram.Services
             });
         }
 
+        /// <summary>
+        /// Closes every account's TDLib instance, which is what flushes and closes its databases,
+        /// and completes once all of them have.
+        /// </summary>
+        public Task CloseAllAsync()
+        {
+            return Task.WhenAll(ResolveAll<IClientService>().Select(x => x.CloseAsync()));
+        }
+
+        /// <summary>
+        /// How long a process about to end waits for TDLib. Closing takes well under a second, and
+        /// this is also the time Windows gives a session-end handler before it says the app is
+        /// holding the shutdown up.
+        /// </summary>
+        public static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// <see cref="CloseAllAsync"/> for a process about to end, which waits for it on the
+        /// calling thread for at most <see cref="CloseTimeout"/>. Blocking rather than awaited:
+        /// past this point there is no dispatcher left to resume on, or no time to reach it.
+        /// </summary>
+        public bool CloseAll()
+        {
+            var closed = CloseAllAsync().Wait(CloseTimeout);
+            Logger.Info(closed ? "Closed" : "Timed out");
+            return closed;
+        }
+
         public IEnumerable<T> ResolveAll<T>()
         {
             foreach (var container in _sessions)

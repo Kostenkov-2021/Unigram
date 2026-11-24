@@ -342,7 +342,8 @@ namespace Telegram.Navigation
         /// when the last window goes - which is the point while the notification area icon is up,
         /// and a process nobody can see or quit when it is not. Also called after Exit on the
         /// icon's menu, which can find every window already closed and so none to call this.
-        /// With the icon up, the process goes into <see cref="BackgroundMode"/> instead.
+        /// With the icon up, the process goes into <see cref="BackgroundMode"/> instead, and it
+        /// stays when a redirected launch is queued, because that launch is about to open a window.
         /// </summary>
         internal static void ExitIfIdle()
         {
@@ -355,7 +356,7 @@ namespace Telegram.Navigation
             {
                 BackgroundMode.Enter();
             }
-            else
+            else if (Program.BeginExit())
             {
                 Application.Current.Exit();
             }
