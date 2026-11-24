@@ -14103,10 +14103,10 @@
     <string name="CreateManagedBotCreatedText">**{0}** will manage this bot for you.</string>
     <string name="CreateManagedBotUnsupported">**{0}** doesn’t support Bot Management mode.</string>
     <string name="ProfileBotManagedBy">Created and managed by **@{0}**</string>
-    <string name="ManagedBotChatInfo">**{0}** is ready!\n\nTap **Start** below to test your new chatbot. Its behavior is defined by **{0}**.</string>
+    <string name="ManagedBotChatInfo">**{0}** is ready!\n\nTap **Start** below to test your new chatbot. Its behavior is defined by **{1}**.</string>
     <string name="CreateManagedBotLimitTitle">Bot Limit Exceeded</string>
     <string name="CreateManagedBotLimitTextTime">You can create another bot in {0}.</string>
-    <string name="CreateManagedBotLimitTextPremium">Subscribe to **Premium** to create up to {0} bots, or delete one of your {0} bots via @BotFather</string>
+    <string name="CreateManagedBotLimitTextPremium">Subscribe to **Premium** to create up to {0} bots, or delete one of your {1} bots via @BotFather</string>
     <string name="CreateManagedBotLimitText">You can create up to {0} bots, or delete your current ones via @BotFather</string>
 
     <string name="AudioSearchLocal">Local Music</string>
