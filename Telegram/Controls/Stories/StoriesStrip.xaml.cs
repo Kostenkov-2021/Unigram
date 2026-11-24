@@ -216,6 +216,11 @@ namespace Telegram.Controls.Stories
                 flyout.CreateFlyoutItem(ViewModel.OpenProfile, activeStories, Strings.OpenChannel2, Icons.Megaphone);
             }
 
+            if (activeStories.Chat.CanPostStories(activeStories.ClientService))
+            {
+                flyout.CreateFlyoutItem(ViewModel.AddChatStory, activeStories, Strings.AddStory, Icons.StoriesAdd);
+            }
+
             if (activeStories.Chat.Type is ChatTypePrivate && !activeStories.IsMyStory)
             {
                 flyout.CreateFlyoutItem(ViewModel.MuteProfile, activeStories, muted ? Strings.NotificationsStoryUnmute2 : Strings.NotificationsStoryMute2, muted ? Icons.Alert : Icons.AlertOff);

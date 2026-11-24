@@ -6155,6 +6155,23 @@
     <string name="StoryKeep">Keep on My Page</string>
     <string name="StoryKeepInfo_one">Keep this story on your page even after it expires in {0} hour. Privacy settings will apply.</string>
     <string name="StoryKeepInfo_other">Keep this story on your page even after it expires in {0} hours. Privacy settings will apply.</string>
+    <string name="StoryKeepChannel">Post to Channel Page</string>
+    <string name="StoryKeepGroup">Post to Group Page</string>
+    <string name="StoryKeepChannelInfo_one">Keep this story on the channel page even after it expires in {0} hour.</string>
+    <string name="StoryKeepChannelInfo_other">Keep this story on the channel page even after it expires in {0} hours.</string>
+    <string name="StoryKeepGroupInfo_one">Keep this story on the group page even after it expires in {0} hour.</string>
+    <string name="StoryKeepGroupInfo_other">Keep this story on the group page even after it expires in {0} hours.</string>
+    <string name="StoryPrivacyPublishAs">Post story as</string>
+    <string name="StoriesAlbum">Album</string>
+    <string name="StoriesAlbumCount_one">{0} Album</string>
+    <string name="StoriesAlbumCount_other">{0} Albums</string>
+    <string name="StoryBlockList_one">**{0} person** will never see your stories.</string>
+    <string name="StoryBlockList_other">**{0} people** will never see your stories.</string>
+    <string name="StoryBlockListEmpty">**Select people** who will never see your stories.</string>
+    <string name="StoryPrivacyAlertBlocklistTitle">Hide my stories from</string>
+    <string name="StoryRestrictions">Privacy Restrictions</string>
+    <string name="StoryRestrictionsInfo">The privacy settings of your story will prevent some users you tagged ({0}) from viewing it.</string>
+    <string name="StoriesPremiumHint2">Posting stories is currently available only to subscribers of **Telegram Premium**.</string>
     <string name="StoryPeriodHint">Choose how long the story will be visible.</string>
     <string name="StoryPeriodPremium_one">Subscribe to **Telegram Premium** to make your stories disappear after {0} hour.</string>
     <string name="StoryPeriodPremium_other">Subscribe to **Telegram Premium** to make your stories disappear after {0} hours.</string>
@@ -7008,6 +7025,7 @@
     <string name="ChannelNeedBoostsForWallpaperDescription">Your channel needs to reach **Level {0}** to change channel wallpaper. **Premium** users can boost your channel with this link:</string>
     <string name="ChannelNeedBoostsForCustomWallpaperDescription">Your channel needs to reach **Level {0}** to change channel wallpaper to custom photo. **Premium** users can boost your channel with this link:</string>
     <string name="ChannelNeedBoostsDescription">Your channel needs {0} to enable posting stories.\n\nAsk your Premium subscribers to boost your channel with this link:</string>
+    <string name="ChannelNeedBoostsDescriptionNextLevel">Your channel needs {0} to post {1} per day.\n\nAsk your Premium subscribers to boost your channel with this link:</string>
 
     <string name="ChannelNeedBoostsDescriptionForNewFeatures">**{0}** needs {1} to unlock new features.</string>
     <string name="ChannelNeedBoostsForSwitchOffAdsDescription">Your channel needs to reach **Level {0}** to switch off ads.\n\nAsk your **Premium** subscribers to boost your channel with this link:</string>
@@ -7022,6 +7040,7 @@
     <string name="GroupNeedBoostsForWallpaperDescription">Your group needs to reach **Level {0}** to change group wallpaper. **Premium** users can boost your group with this link:</string>
     <string name="GroupNeedBoostsForCustomWallpaperDescription">Your group needs to reach **Level {0}** to change group wallpaper to custom photo. **Premium** users can boost your group with this link:</string>
     <string name="GroupNeedBoostsDescription">Your group needs {0} to enable posting stories.\n\nAsk your **Premium** members to boost your group with this link:</string>
+    <string name="GroupNeedBoostsDescriptionNextLevel">Your group needs {0} to be able post **{1}** per day.\n\nAsk your Premium members to boost your group with this link:</string>
 
     <string name="GroupNeedBoostsDescriptionForNewFeatures">**{0}** needs {1} to unlock new features.</string>
 
@@ -7037,6 +7056,7 @@
     <string name="BoostStories_one">**{0}**&#160;story</string>
     <string name="BoostStories_other">**{0}**&#160;stories</string>
     <string name="BoostingIncreaseLevel">Increase Story Limit</string>
+    <string name="BoostingEnableStories">Enable Stories</string>
     <string name="BoostingEnableColor">Enable Colors</string>
     <string name="BoostingEnableProfileColor">Unlock Profile Colors</string>
     <string name="BoostingEnableEmojiStatus">Unlock Emoji Status</string>
@@ -15029,5 +15049,7 @@
   <string name="WidgetStopped">Widget stopped</string>
   <string name="AttachWidget">Widget</string>
   <string name="WidgetNetworkHint">A tap may send data to the bot's server.</string>
+
+
 
 </resources>

@@ -24,7 +24,9 @@ using Telegram.Services;
 using Telegram.Services.Factories;
 using Telegram.Td.Api;
 using Telegram.Views;
+using Telegram.ViewModels.Supergroups;
 using Telegram.Views.Chats;
+using Telegram.Views.Chats.Popups;
 using Telegram.Views.Popups;
 using Telegram.Views.Premium.Popups;
 using Telegram.Views.Stories.Popups;
@@ -221,10 +223,17 @@ namespace Telegram.ViewModels.Stories
         {
             // A post that failed on a limit would only fail again. Any other failure shows on the
             // story itself, with the new error.
-            if (await CanPostStoryAsync(story.PosterChatId, ElementTheme.Dark))
+            var canPost = await CanPostStoryAsync(story.PosterChatId, ElementTheme.Dark);
+            if (canPost)
             {
                 await _storyService.RetryAsync(story);
             }
+        }
+
+        // Over the publish sheet, which is dark.
+        private Task<bool> CanPostStoryDarkAsync(long chatId)
+        {
+            return CanPostStoryAsync(chatId, ElementTheme.Dark);
         }
 
         // Says why not, where a story cannot be posted to the chat now.
@@ -236,7 +245,10 @@ namespace Telegram.ViewModels.Stories
                 case CanPostStoryResultOk:
                     return true;
                 case CanPostStoryResultPremiumNeeded:
-                    NavigationService.ShowPromo(new PremiumFeatureUpgradedStories());
+                    ToastPopup.ShowFeaturePromo(NavigationService, Strings.StoriesPremiumHint2, new PremiumFeatureUpgradedStories());
+                    break;
+                case CanPostStoryResultBoostNeeded:
+                    await ShowBoostNeededAsync(chatId, requestedTheme);
                     break;
                 case CanPostStoryResultActiveStoryLimitExceeded:
                     await ShowPopupAsync(new LimitReachedPopup(NavigationService, ClientService, new PremiumLimitTypeActiveStoryCount()), requestedTheme: requestedTheme);
@@ -253,11 +265,27 @@ namespace Telegram.ViewModels.Stories
                 case Error error:
                     ToastPopup.ShowError(XamlRoot, error);
                     break;
-
-                    // CanPostStoryResultBoostNeeded is for channels, which cannot post stories yet.
             }
 
             return false;
+        }
+
+        private async Task ShowBoostNeededAsync(long chatId, ElementTheme requestedTheme)
+        {
+            if (!ClientService.TryGetChat(chatId, out Chat chat))
+            {
+                return;
+            }
+
+            var response1 = await ClientService.SendAsync(new GetChatBoostFeatures(chat.Type is ChatTypeSupergroup { IsChannel: true }));
+            var response2 = await ClientService.SendAsync(new GetAvailableChatBoostSlots());
+            var response3 = await ClientService.SendAsync(new GetChatBoostStatus(chatId));
+
+            if (response1 is ChatBoostFeatures features && response2 is ChatBoostSlots slots && response3 is ChatBoostStatus status)
+            {
+                // A level to reach is what offers the administrator the link to share.
+                await ShowPopupAsync(new ChatBoostFeaturesPopup(ClientService, NavigationService, chat, status, slots, features, ChatBoostFeature.Stories, status.Level + 1), requestedTheme: requestedTheme);
+            }
         }
 
         public async Task DiscardStoryAsync(StoryViewModel story)
@@ -313,12 +341,28 @@ namespace Telegram.ViewModels.Stories
             });
         }
 
-        public async void AddStory()
+        public void AddStory()
+        {
+            AddStory(ClientService.Options.MyId, true);
+        }
+
+        public void AddChatStory(ActiveStoriesViewModel activeStories)
+        {
+            AddStory(activeStories.ChatId, false);
+        }
+
+        /// <summary>
+        /// Picks, edits and posts a story as <paramref name="chatId"/>: the current user's own chat,
+        /// or a supergroup or channel. Only with <paramref name="canChangeChat"/> can the publish
+        /// sheet post it as another chat instead.
+        /// </summary>
+        public async void AddStory(long chatId, bool canChangeChat)
         {
             try
             {
                 // Before the picker, so that nobody edits a story they then cannot post.
-                if (!await CanPostStoryAsync(ClientService.Options.MyId))
+                var canPost = await CanPostStoryAsync(chatId);
+                if (!canPost)
                 {
                     return;
                 }
@@ -331,17 +375,20 @@ namespace Telegram.ViewModels.Stories
                 var media = await picker.PickSingleMediaAsync(XamlRoot);
                 if (media is StoragePhoto or StorageVideo)
                 {
-                    var editor = new EditStoryPopup(NavigationService, ClientService, media);
-                    if (await editor.ShowAsync() != ContentDialogResult.Primary)
+                    // The sheet checks a chat chosen in it the way the chat was checked here.
+                    var options = new PostStoryPopup(ClientService, NavigationService, chatId, canChangeChat, CanPostStoryDarkAsync);
+
+                    var editor = new EditStoryPopup(NavigationService, ClientService, media, options);
+                    var confirm = await editor.ShowAsync();
+                    if (confirm != ContentDialogResult.Primary)
                     {
                         return;
                     }
 
-                    var options = editor.PostOptions;
                     var content = await StoryFactory.CreateContentAsync(media);
 
-                    // Posted as the current user through the Saved Messages chat, whose id is the user's.
-                    var request = new PostStory(ClientService.Options.MyId, content, StoryFactory.CreateAreas(media), options.Caption, null, options.PrivacySettings, Vector<int>.Empty, options.ActivePeriod, null, options.IsPostedToChatPage, options.ProtectContent);
+                    // The current user posts through the Saved Messages chat, whose id is the user's.
+                    var request = new PostStory(options.ChatId, content, StoryFactory.CreateAreas(media), options.Caption, null, options.PrivacySettings, new Vector<int>(options.AlbumIds), options.ActivePeriod, null, options.IsPostedToChatPage, options.ProtectContent);
 
                     var response = await ClientService.SendAsync(request);
                     if (response is Story story)

@@ -21,6 +21,7 @@ using Telegram.Services.Wallet;
 using Telegram.Td.Api;
 using Telegram.ViewModels.Delegates;
 using Telegram.ViewModels.Profile;
+using Telegram.ViewModels.Stories;
 using Telegram.ViewModels.Supergroups;
 using Telegram.Views;
 using Telegram.Views.Chats;
@@ -742,6 +743,20 @@ namespace Telegram.ViewModels
             }
 
             NavigationService.Navigate(typeof(ChatStoriesPage), new ChatStoriesArgs(chat.Id, ChatStoriesType.Archive));
+        }
+
+        // Posted as the chat the profile is of, which the publish sheet does not let change.
+        public void AddStory()
+        {
+            var chat = _chat;
+            if (chat == null)
+            {
+                return;
+            }
+
+            var stories = new StoryListViewModel(ClientService, Settings, Aggregator);
+            stories.NavigationService = NavigationService;
+            stories.AddStory(chat.Id, false);
         }
 
         public async void Block()

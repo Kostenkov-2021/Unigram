@@ -76,6 +76,7 @@ namespace Telegram.Views.Chats.Popups
                     ChatBoostFeature.BackgroundCustomEmoji => Strings.BoostingEnableLinkIcon,
                     ChatBoostFeature.ProfileBackgroundCustomEmoji => Strings.BoostingEnableProfileIcon,
                     ChatBoostFeature.AutoTranslate => Strings.UnlockBoostChannelAutotranslation,
+                    ChatBoostFeature.Stories => status.Level == 0 ? Strings.BoostingEnableStories : Strings.BoostingIncreaseLevel,
                     _ => _channel ? Strings.BoostChannel : Strings.BoostGroup
                 };
 
@@ -90,6 +91,8 @@ namespace Telegram.Views.Chats.Popups
                     ChatBoostFeature.ProfileBackgroundCustomEmoji => _channel ? Strings.ChannelNeedBoostsForProfileIconDescription : Strings.GroupNeedBoostsForProfileIconDescription,
                     ChatBoostFeature.DisableSponsoredMessages => _channel ? Strings.ChannelNeedBoostsForSwitchOffAdsDescription : Strings.ChannelNeedBoostsForSwitchOffAdsDescription,
                     ChatBoostFeature.AutoTranslate => Strings.ChannelNeedBoostsForAutotranslationDescription,
+                    ChatBoostFeature.Stories when status.Level == 0 => _channel ? Strings.ChannelNeedBoostsDescription : Strings.GroupNeedBoostsDescription,
+                    ChatBoostFeature.Stories => _channel ? Strings.ChannelNeedBoostsDescriptionNextLevel : Strings.GroupNeedBoostsDescriptionNextLevel,
                     _ => _channel ? Strings.ChannelNeedBoostsDescriptionForNewFeatures : Strings.GroupNeedBoostsDescriptionForNewFeatures
                 };
 
@@ -101,6 +104,14 @@ namespace Telegram.Views.Chats.Popups
                     {
                         description = string.Format("{0} {1}", description, Strings.BoostingPremiumUserCanBoostGroupWithLink);
                     }
+                }
+                else if (feature == ChatBoostFeature.Stories)
+                {
+                    // Enabling stories counts every boost the first level needs; a later level
+                    // counts only the ones still missing.
+                    description = status.Level == 0
+                        ? string.Format(description, Locale.Declension(Strings.R.MoreBoosts, status.NextLevelBoostCount))
+                        : string.Format(description, Locale.Declension(Strings.R.MoreBoosts, status.NextLevelBoostCount - status.BoostCount), Locale.Declension(Strings.R.BoostStories, status.Level + 1));
                 }
                 else
                 {

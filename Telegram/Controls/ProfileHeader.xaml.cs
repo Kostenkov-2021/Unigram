@@ -1704,6 +1704,11 @@ namespace Telegram.Controls
                     flyout.CreateFlyoutItem(ViewModel.OpenStatistics, Strings.Statistics, Icons.DataUsage);
                 }
 
+                if (chat.CanPostStories(ViewModel.ClientService))
+                {
+                    flyout.CreateFlyoutItem(ViewModel.AddStory, Strings.AddStory, Icons.StoriesAdd);
+                }
+
                 if (supergroup.CanEditStories())
                 {
                     flyout.CreateFlyoutItem(ViewModel.OpenArchivedStories, Strings.ArchivedStories, Icons.Archive);

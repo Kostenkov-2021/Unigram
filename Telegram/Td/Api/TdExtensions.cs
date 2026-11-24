@@ -4237,6 +4237,19 @@ namespace Telegram.Td.Api
                 or ChatMemberStatusRestricted { Permissions.CanCreateTopics: true };
         }
 
+        // Only supergroups and channels post stories of their own; a private chat's are its user's.
+        public static bool CanPostStories(this Chat chat, IClientService clientService)
+        {
+            if (chat.Type is not ChatTypeSupergroup)
+            {
+                return false;
+            }
+
+            var status = clientService.GetChatMemberStatus(chat, out _);
+            return status is ChatMemberStatusCreator
+                or ChatMemberStatusAdministrator { Rights.CanPostStories: true };
+        }
+
         public static bool CanEditStories(this Chat chat, IClientService clientService)
         {
             var status = clientService.GetChatMemberStatus(chat, out bool channel);
