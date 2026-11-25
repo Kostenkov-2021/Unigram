@@ -1541,13 +1541,8 @@ namespace Telegram.Views
 
             ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-
-            var context = WindowContext.ForXamlRoot(XamlRoot);
-            if (context != null)
-            {
-                context.CharacterReceived += OnCharacterReceived;
-                context.Activated += OnWindowActivated;
-            }
+            ViewModel.NavigationService.Window.CharacterReceived += OnCharacterReceived;
+            ViewModel.NavigationService.Window.Activated += OnWindowActivated;
 
             OnStateChanged(null, null);
 
@@ -1674,13 +1669,8 @@ namespace Telegram.Views
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
-            var context = WindowContext.ForXamlRoot(this);
-            if (context != null)
-            {
-                context.CharacterReceived -= OnCharacterReceived;
-                context.Activated -= OnWindowActivated;
-            }
-
+            ViewModel.NavigationService.Window.CharacterReceived -= OnCharacterReceived;
+            ViewModel.NavigationService.Window.Activated -= OnWindowActivated;
             ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
             Bindings.StopTracking();
