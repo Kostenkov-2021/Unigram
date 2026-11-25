@@ -1961,6 +1961,9 @@
     <Compile Include="Views\Wallet\Popups\WalletAboutPopup.xaml.cs">
       <DependentUpon>WalletAboutPopup.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\Wallet\Popups\WalletFirstGramsPopup.xaml.cs">
+      <DependentUpon>WalletFirstGramsPopup.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\Wallet\Popups\WalletBalancePopup.xaml.cs">
       <DependentUpon>WalletBalancePopup.xaml</DependentUpon>
     </Compile>
@@ -2202,6 +2205,9 @@
       <DependentUpon>ChatView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\ChatView.Drawers.cs">
+      <DependentUpon>ChatView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ChatView.ChecksHint.cs">
       <DependentUpon>ChatView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\ChatView.xaml.cs">
@@ -2481,6 +2487,9 @@
     <Compile Include="Views\Supergroups\Popups\SupergroupTopicPopup.xaml.cs">
       <DependentUpon>SupergroupTopicPopup.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\Supergroups\Popups\SupergroupBroadcastGroupPopup.xaml.cs">
+      <DependentUpon>SupergroupBroadcastGroupPopup.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\Supergroups\Popups\SupergroupChooseMemberPopup.xaml.cs">
       <DependentUpon>SupergroupChooseMemberPopup.xaml</DependentUpon>
     </Compile>
@@ -2624,6 +2633,7 @@
     <Compile Include="ViewModels\DialogViewModel.Inline.cs" />
     <Compile Include="ViewModels\DialogViewModel.Messages.cs" />
     <Compile Include="ViewModels\DialogViewModel.Footer.cs" />
+    <Compile Include="ViewModels\DialogViewModel.Suggestions.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.ChatListHint.cs" />
     <Compile Include="ViewModels\MainViewModel.Suggestions.cs" />
@@ -2878,6 +2888,9 @@
     <Content Include="Assets\Animations\WalletTest.tgs" />
     <Content Include="Assets\Animations\WalletAbout.tgs" />
     <Content Include="Assets\Animations\Gram.tgs" />
+    <Content Include="Assets\Animations\BroadcastGroup.tgs" />
+    <Content Include="Assets\Animations\ChecksRead.tgs" />
+    <Content Include="Assets\Animations\ChecksSent.tgs" />
     <Content Include="Assets\Animations\GramCard.tgs" />
     <Content Include="Assets\Models\Diamond\anchors.bin" />
     <Content Include="Assets\Models\Diamond\camera.bin" />
@@ -4682,6 +4695,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Views\Wallet\Popups\WalletFirstGramsPopup.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\Wallet\Popups\WalletBalancePopup.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -5191,6 +5208,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Views\Supergroups\Popups\SupergroupTopicPopup.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Supergroups\Popups\SupergroupBroadcastGroupPopup.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

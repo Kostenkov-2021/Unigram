@@ -316,6 +316,16 @@ namespace Telegram.Services
 
         bool TryGetSuggestedAction<T>(out T action) where T : SuggestedAction;
 
+        /// <summary>
+        /// Whether <see cref="SuggestedActionViewChecksHint"/> is pending, without a lookup.
+        /// </summary>
+        bool IsChecksHintSuggested { get; }
+
+        /// <summary>
+        /// Whether any <see cref="SuggestedActionConvertToBroadcastGroup"/> is pending, without a lookup.
+        /// </summary>
+        bool IsBroadcastGroupSuggested { get; }
+
         Settings.NotificationsSettings Notifications { get; }
 
         void AddRecentlyOpenedChat(long chatId);
@@ -3066,6 +3076,15 @@ namespace Telegram.Services
 
         private readonly HashSet<SuggestedAction> _suggestedActions = new(new SuggestedActionComparer());
 
+        // Opening a chat reads these, and chats are switched constantly, so they are worked out when
+        // the set changes, which is rare, instead of looked up under the lock on every open.
+        private volatile bool _isChecksHintSuggested;
+        private volatile bool _isBroadcastGroupSuggested;
+
+        public bool IsChecksHintSuggested => _isChecksHintSuggested;
+
+        public bool IsBroadcastGroupSuggested => _isBroadcastGroupSuggested;
+
         // TDLib's identity: the type plus the supergroup, the custom name and URL, and which of the
         // two server email suggestions it is. Everything else, SetPassword's AuthorizationDelay and
         // ExtendPremium's URL included, is payload: removals arrive with whatever value is current.
@@ -4540,6 +4559,18 @@ namespace Telegram.Services
                                 _suggestedActions.Remove(action);
                                 _suggestedActions.Add(action);
                             }
+
+                            var checksHint = false;
+                            var broadcastGroup = false;
+
+                            foreach (var action in _suggestedActions)
+                            {
+                                checksHint |= action is SuggestedActionViewChecksHint;
+                                broadcastGroup |= action is SuggestedActionConvertToBroadcastGroup;
+                            }
+
+                            _isChecksHintSuggested = checksHint;
+                            _isBroadcastGroupSuggested = broadcastGroup;
                         }
 
                         break;

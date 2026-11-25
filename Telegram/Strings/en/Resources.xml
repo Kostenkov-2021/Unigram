@@ -491,8 +491,11 @@
     <string name="GroupJoin">JOIN</string>
     <string name="GroupJoinRequest">APPLY TO JOIN GROUP</string>
     <string name="GroupJoinRequestSent">JOIN REQUEST SENT</string>
+    <string name="GigagroupAlertText">Your group has reached the limit of **200,000** members.\n\nYou can increase this limit by converting the group to a **broadcast group** where only admins can post.\nInterested?</string>
+    <string name="GigagroupAlertTitle">Limit reached</string>
+    <string name="GigagroupAlertLearnMore">LEARN MORE</string>
     <string name="BroadcastGroupInfo">Only admins can send messages in this group.</string>
-
+    <string name="BroadcastGroupConvertSuccess">Your group can now have more than 200,000 members.</string>
 
 
 
@@ -1477,8 +1480,8 @@
 
 
 
-
-
+    <string name="HintSent">Delivered</string>
+    <string name="HintRead">Read</string>
 
 
 
@@ -1756,16 +1759,16 @@
     <string name="LinkInfo">Anyone who has Telegram installed will be able to join your group by following this link.</string>
 
 
-
-
-
-
-
-
-
-
-
-
+    <string name="GigagroupConvertTitle">Broadcast Groups</string>
+    <string name="GigagroupConvertInfo1">No limit on the number of members.</string>
+    <string name="GigagroupConvertInfo2">Only admins can send messages.</string>
+    <string name="GigagroupConvertInfo3">Can\'t be turned back into a regular group.</string>
+    <string name="GigagroupConvertProcessButton">Convert to Broadcast Group</string>
+    <string name="GigagroupConvertCancelButton">Leave as regular group</string>
+    <string name="GigagroupConvertAlertTitle">Are you sure?</string>
+    <string name="GigagroupConvertAlertText">Regular members of the group (non-admins) will **permanently** lose their right to send messages in the group.\n\nThis action **can\'t** be undone.</string>
+    <string name="GigagroupConvertAlertConver">Convert</string>
+    <string name="GigagroupConvertCancelHint">If you change your mind, go to your group\'s Settings &gt; Permissions.</string>
     <!--group info view-->
 
     <string name="SharedMedia">Shared Media</string>
@@ -14632,6 +14635,13 @@
     <string name="WalletHowItWorks">How It Works</string>
     <string name="WalletHowItWorksInfo">Only you control your funds —\nno one else has access.</string>
     <string name="WalletGotIt">Got it</string>
+    <string name="WalletFirstGrams">Your first Grams!</string>
+    <string name="WalletFirstGramsActions">You can:</string>
+    <string name="WalletFirstGramsSendInfo">Transfer Grams to anyone.\nTap &#128206; → Money in chats.</string>
+    <string name="WalletTrade">Trade</string>
+    <string name="WalletFirstGramsTradeInfo">Convert Grams to cash or crypto on exchanges.</string>
+    <string name="WalletStore">Store</string>
+    <string name="WalletFirstGramsStoreInfo">Keep your Grams in Telegram\n(&#128172; → ⋮ → Money) or other wallets.</string>
     <string name="WalletTermsOfService">By using this service you agree to its **Terms**.</string>
 
     <string name="WalletCopyAddress">Copy address</string>
@@ -14665,6 +14675,7 @@
     <string name="WalletTransferTo">to {0}</string>
     <string name="WalletFeeAmount">Fee: {0}</string>
     <string name="WalletFeeAmountWithCurrency">Fee: {0} (~{1}).</string>
+    <string name="WalletFirstGramsRate">{0} currently equals {1} USD.\nYou can:</string>
     <string name="WalletDisableBackup">Disable Backup</string>
     <string name="WalletEncryptedBackup">Encrypted Backup</string>
     <string name="WalletEnableBackup">Enable Backup</string>

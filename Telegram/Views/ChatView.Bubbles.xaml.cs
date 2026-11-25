@@ -1930,6 +1930,8 @@ namespace Telegram.Views
                 keys.Add(message.Key);
                 keys.Remove(oldKey);
             }
+
+            CheckChecksHint();
         }
 
         public void UpdateMessageSummary(MessageViewModel message)

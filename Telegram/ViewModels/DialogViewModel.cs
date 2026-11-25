@@ -1561,6 +1561,7 @@ namespace Telegram.ViewModels
             IsLoading = false;
             MessagesLoaded?.Invoke(this, new MessagesLoadedEventArgs(PanelScrollingDirection.None));
 
+            ShowBroadcastGroupSuggestion(chat);
             PinnedMessages.LoadSlice(fromMessageId);
 
             if (loadMore != PanelScrollingDirection.None)
@@ -2535,6 +2536,7 @@ namespace Telegram.ViewModels
 
             _upgradedFromChatId = 0;
             _upgradedFromResolved = false;
+            _broadcastGroupSuggestionDue = true;
 
             Chat = chat;
             IsForum = Type == DialogType.History && ClientService.IsForum(chat);

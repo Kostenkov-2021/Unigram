@@ -2637,6 +2637,13 @@ namespace Telegram.ViewModels
                 // just sent - which the account does not know about yet - opens too.
                 var wallet = Session.Resolve<IWalletService>();
 
+                // The first incoming transfer is introduced before it is opened.
+                if (!message.IsOutgoing && ClientService.TryGetSuggestedAction(out SuggestedActionViewFirstTonWalletTransferHint hint))
+                {
+                    ClientService.Send(new HideSuggestedAction(hint));
+                    await ShowPopupAsync(new Views.Wallet.Popups.WalletFirstGramsPopup(ClientService));
+                }
+
                 var transaction = await wallet.GetTransactionAsync(tonWalletTransfer.TransactionId);
                 if (transaction != null)
                 {

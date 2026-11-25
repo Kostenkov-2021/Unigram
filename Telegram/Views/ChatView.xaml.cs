@@ -539,6 +539,7 @@ namespace Telegram.Views
             // for it is dropped. A burst still in the air would otherwise play over the next chat.
             _messages.Flush();
             _dust?.Stop();
+            StopChecksHint();
 
             // Ranges measured against rows this view is about to stop showing.
             _messagesShift.Clear();
@@ -793,6 +794,7 @@ namespace Telegram.Views
             _updateThemeTask?.TrySetResult(true);
 
             Bindings.Update();
+            CheckChecksHint();
         }
 
         public void DisableScreenCapture()
