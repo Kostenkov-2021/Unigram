@@ -25,6 +25,7 @@ using Telegram.ViewModels.Wallet;
 using Telegram.Views.Grams;
 using Telegram.Views.Host;
 using Telegram.Views.Popups;
+using Telegram.Views.Stars.Popups;
 using Telegram.Views.Wallet.Popups;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
@@ -231,10 +232,33 @@ namespace Telegram.Views.Wallet
                 return;
             }
 
+            // A transaction that moved or traded a gift opens the gift, as the transaction carries
+            // it, with the transaction in place of its details.
+            var gift = GiftOf(transaction.Type);
+            if (gift != null)
+            {
+                await _navigationService.ShowPopupAsync(ReceivedGiftPopup.FromWalletTransaction(_clientService, _navigationService, gift, transaction));
+                return;
+            }
+
             var popup = new WalletTransactionPopup(_clientService, _wallet, _navigationService, transaction);
 
             // The popup opens the send flow itself, having the transfer and its peer in hand.
             await _navigationService.ShowPopupAsync(popup);
+        }
+
+        private static UpgradedGift GiftOf(TonWalletTransactionType type)
+        {
+            if (type is TonWalletTransactionTypeTelegramGiftTransfer transfer)
+            {
+                return transfer.Nft?.Gift;
+            }
+            else if (WalletHelper.GiftMarketActivity.TryGet(type, out var activity))
+            {
+                return activity.Nft?.Gift;
+            }
+
+            return null;
         }
 
         /// <summary>

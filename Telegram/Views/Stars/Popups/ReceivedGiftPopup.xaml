@@ -655,6 +655,107 @@
                                 <controls:TableViewItem x:Name="UpgradedQuantity"
                                                         Header="{CustomResource Gift2Quantity}" />
                             </controls:TableView>
+                            <StackPanel x:Name="TransactionRoot"
+                                        Visibility="Collapsed"
+                                        Grid.Row="1">
+                                <StackPanel x:Name="TransactionAmount"
+                                            Margin="0,12,0,0"
+                                            Visibility="Collapsed">
+                                    <TextBlock x:Name="TransactionAmountText"
+                                               Style="{StaticResource PopupTextBlockStyle}"
+                                               TextAlignment="Center" />
+                                    <TextBlock x:Name="TransactionConverted"
+                                               Style="{StaticResource InfoBodyTextBlockStyle}"
+                                               TextAlignment="Center"
+                                               Margin="0,-2,0,0" />
+                                </StackPanel>
+                                <controls:TableView Margin="8,8,8,0">
+                                    <controls:TableViewItem x:Name="TransactionPeerRow"
+                                                            HorizontalContentAlignment="Stretch"
+                                                            Visibility="Collapsed"
+                                                            Padding="0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition />
+                                            </Grid.ColumnDefinitions>
+                                            <controls:ProfilePicture x:Name="TransactionPeerPhoto"
+                                                                     IsEnabled="False"
+                                                                     Margin="8,4,0,4"
+                                                                     Size="24" />
+                                            <TextBlock Style="{StaticResource BodyTextBlockStyle}"
+                                                       TextWrapping="NoWrap"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"
+                                                       Margin="8,5,8,6"
+                                                       Grid.Column="1"><Hyperlink UnderlineStyle="None"
+                                                                                  Click="TransactionPeer_Click"><Run x:Name="TransactionPeerTitle" /></Hyperlink></TextBlock>
+                                        </Grid>
+                                    </controls:TableViewItem>
+                                    <controls:TableViewItem x:Name="TransactionShareRow"
+                                                            Visibility="Collapsed" />
+                                    <controls:TableViewItem x:Name="TransactionPlatformFeeRow"
+                                                            Header="{CustomResource GiftOnchainOfferRowPlatformFee}"
+                                                            Visibility="Collapsed">
+                                        <TextBlock><Run x:Name="TransactionPlatformFee" /><Run x:Name="TransactionPlatformFeePercent"
+                                                                                               Foreground="{ThemeResource SystemControlDisabledBaseMediumLowBrush}" /></TextBlock>
+                                    </controls:TableViewItem>
+                                    <controls:TableViewItem x:Name="TransactionFeeRow"
+                                                            Visibility="Collapsed">
+                                        <TextBlock><Run x:Name="TransactionFee" /><Run x:Name="TransactionFeeConverted"
+                                                                                       Foreground="{ThemeResource SystemControlDisabledBaseMediumLowBrush}" /></TextBlock>
+                                    </controls:TableViewItem>
+                                    <controls:TableViewItem x:Name="TransactionPriceRow"
+                                                            Visibility="Collapsed" />
+                                    <controls:TableViewItem x:Name="TransactionOldPriceRow"
+                                                            Header="{CustomResource GiftOnchainRowOldPrice}"
+                                                            Visibility="Collapsed">
+                                        <TextBlock x:Name="TransactionOldPrice"
+                                                   TextDecorations="Strikethrough" />
+                                    </controls:TableViewItem>
+                                    <controls:TableViewItem x:Name="TransactionExpirationRow"
+                                                            Header="{CustomResource GiftOnchainRowExpiration}"
+                                                            Visibility="Collapsed" />
+                                    <controls:TableViewItem x:Name="TransactionCancellationFeeRow"
+                                                            Header="{CustomResource GiftOnchainRowCancellationFee}"
+                                                            Visibility="Collapsed" />
+                                    <controls:TableViewItem x:Name="TransactionAddressRow"
+                                                            HorizontalContentAlignment="Stretch"
+                                                            VerticalContentAlignment="Stretch"
+                                                            Visibility="Collapsed"
+                                                            Padding="0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="TransactionAddressStart"
+                                                       Style="{StaticResource BodyTextBlockStyle}"
+                                                       FontFamily="Consolas"
+                                                       TextWrapping="NoWrap"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Margin="8,5,0,6"
+                                                       VerticalAlignment="Top" />
+                                            <TextBlock x:Name="TransactionAddressEnd"
+                                                       Style="{StaticResource BodyTextBlockStyle}"
+                                                       FontFamily="Consolas"
+                                                       TextWrapping="NoWrap"
+                                                       Margin="0,5,8,6"
+                                                       VerticalAlignment="Top"
+                                                       Grid.Column="1" />
+
+                                            <Button Click="TransactionAddress_Click"
+                                                    HorizontalAlignment="Stretch"
+                                                    VerticalAlignment="Stretch"
+                                                    Opacity="0"
+                                                    Grid.ColumnSpan="3" />
+                                        </Grid>
+                                    </controls:TableViewItem>
+                                    <controls:TableViewItem x:Name="TransactionDateRow"
+                                                            Header="{CustomResource WalletDate}" />
+                                </controls:TableView>
+                            </StackPanel>
                             <Grid x:Name="UpgradedCaptionRoot"
                                   Background="{ThemeResource ButtonBackground}"
                                   BorderBrush="{ThemeResource ButtonBorderBrush}"

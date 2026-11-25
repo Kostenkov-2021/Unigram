@@ -1478,10 +1478,7 @@ namespace Telegram.Common
             }
             else if (response is UpgradedGift gift)
             {
-                var text = gift.OriginalDetails?.Text ?? string.Empty.AsFormattedText();
-                var receivedGift = new ReceivedGift(string.Empty, null, text, 0, true, false, false, false, false, false, false, 0, new SentGiftUpgraded(gift), Array.Empty<int>(), 0, 0, false, 0, 0, 0, 0, 0, string.Empty, 0);
-
-                var popup = new ReceivedGiftPopup(clientService, navigation, receivedGift, null, null);
+                var popup = new ReceivedGiftPopup(clientService, navigation, ReceivedGiftPopup.Wrap(gift), null, null);
 
                 if (collectible != null)
                 {

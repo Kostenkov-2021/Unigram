@@ -12571,6 +12571,8 @@
     <string name="WalletOnchainGiftStatusPutOnSale">Put on sale</string>
     <string name="WalletOnchainGiftStatusPriceChanged">Repriced</string>
     <string name="WalletOnchainGiftStatusRemovedFromSale">Removed from sale</string>
+    <string name="GiftOnchainRowSellerShare">Seller’s share</string>
+    <string name="GiftOnchainRowNetworkFee">Network fee</string>
     <string name="GiftOnchainRowPrice">Price</string>
     <string name="GiftOnchainRowNewPrice">New price</string>
     <string name="GiftOnchainRowOldPrice">Old price</string>

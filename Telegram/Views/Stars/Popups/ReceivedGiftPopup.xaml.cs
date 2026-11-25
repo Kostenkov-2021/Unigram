@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -18,6 +19,7 @@ using Telegram.Converters;
 using Telegram.Navigation;
 using Telegram.Navigation.Services;
 using Telegram.Services;
+using Telegram.Services.Wallet;
 using Telegram.Streams;
 using Telegram.Td;
 using Telegram.Td.Api;
@@ -103,6 +105,12 @@ namespace Telegram.Views.Stars.Popups
         private TonNft _collectible;
         private IWalletCollectibleHost _collectibleHost;
 
+        // Opened from a wallet transaction that moved or traded the gift: the sheet describes the
+        // transaction, and offers none of the gift's own actions.
+        private TonWalletTransaction _walletTransaction;
+        private bool _walletStatus;
+        private string _walletAddress;
+
         public ReceivedGiftPopup(IClientService clientService, INavigationService navigationService, ReceivedGift gift, MessageSender receiverId, MessageSender sendGiftTo, ProfileGiftsTabViewModel profile = null, bool fromMessage = false)
         {
             InitializeComponent();
@@ -181,6 +189,323 @@ namespace Telegram.Views.Stars.Popups
             PrimaryButtonText = GetUpgradedPrimaryButtonText(upgraded.Gift);
         }
 
+        /// <summary>
+        /// An upgraded gift known by itself rather than from anyone's list, as the received gift
+        /// this popup takes.
+        /// </summary>
+        public static ReceivedGift Wrap(UpgradedGift gift)
+        {
+            var text = gift.OriginalDetails?.Text ?? string.Empty.AsFormattedText();
+            return new ReceivedGift(string.Empty, null, text, 0, true, false, false, false, false, false, false, 0, new SentGiftUpgraded(gift), Array.Empty<int>(), 0, 0, false, 0, 0, 0, 0, 0, string.Empty, 0);
+        }
+
+        /// <summary>
+        /// The gift a wallet transaction moved or traded, with the transaction in place of the
+        /// gift's details. <paramref name="gift"/> is the one the transaction carries, as it was.
+        /// </summary>
+        public static ReceivedGiftPopup FromWalletTransaction(IClientService clientService, INavigationService navigationService, UpgradedGift gift, TonWalletTransaction transaction)
+        {
+            var popup = new ReceivedGiftPopup(clientService, navigationService, Wrap(gift), null, null);
+            popup.ShowAsWalletTransaction(transaction);
+            return popup;
+        }
+
+        private void ShowAsWalletTransaction(TonWalletTransaction transaction)
+        {
+            if (_gift.Gift is not SentGiftUpgraded upgraded)
+            {
+                return;
+            }
+
+            _walletTransaction = transaction;
+
+            // Whoever holds the gift now, nothing here acts for them.
+            _owned = false;
+            _hosted = false;
+
+            UpgradedButtons.Visibility = Visibility.Collapsed;
+            UpgradedBlockchain.Visibility = Visibility.Collapsed;
+            UpgradedTableRoot.Visibility = Visibility.Collapsed;
+            UpgradedCaptionRoot.Visibility = Visibility.Collapsed;
+            Info.Visibility = Visibility.Collapsed;
+            TransactionRoot.Visibility = Visibility.Visible;
+
+            UpgradedPublisher.Visibility = Visibility.Collapsed;
+            UpgradedSubtitle.Visibility = Visibility.Visible;
+
+            if (TryGetWalletGiftAction(transaction.Type, upgraded.Gift, out var action))
+            {
+                ShowWalletGiftAction(transaction, action);
+            }
+            else if (transaction.Type is TonWalletTransactionTypeTelegramGiftTransfer transfer)
+            {
+                ShowWalletGiftTransfer(transaction, transfer);
+            }
+
+            if (transaction.Date != 0)
+            {
+                TransactionDateRow.Content = Formatter.DateAt(transaction.Date);
+            }
+            else
+            {
+                TransactionDateRow.Visibility = Visibility.Collapsed;
+            }
+
+            UpdateVisibility();
+
+            PrimaryButtonText = Strings.OK;
+        }
+
+        private void ShowWalletGiftAction(TonWalletTransaction transaction, WalletGiftAction action)
+        {
+            // The status is the subtitle, and the pill a price would be in says it again.
+            var status = ToStatus(action.Kind);
+
+            UpgradedSubtitle.Text = status;
+            ResaleStarCount.Text = status;
+            _walletStatus = true;
+
+            if (action.Amount != 0 && action.Kind is not WalletGiftKind.RemovedFromSale and not WalletGiftKind.Repriced)
+            {
+                var amount = Math.Abs(action.Amount);
+
+                TransactionAmountText.Text = (action.Amount > 0 ? "+" : "-") + Formatter.Grams(amount, true);
+                TransactionConverted.Text = ConvertGrams(amount);
+                TransactionAmount.Visibility = Visibility.Visible;
+            }
+
+            var trade = action.Kind is WalletGiftKind.Bought or WalletGiftKind.Sold or WalletGiftKind.OfferAccepted;
+
+            if (trade && action.Price > 0)
+            {
+                TransactionShareRow.Header = action.Kind == WalletGiftKind.Bought && action.Fee > 0
+                    ? Strings.GiftOnchainRowSellerShare
+                    : Strings.GiftOnchainRowPrice;
+                TransactionShareRow.Content = Formatter.Grams(action.Price);
+                TransactionShareRow.Visibility = Visibility.Visible;
+            }
+
+            if (trade && action.Fee > 0)
+            {
+                TransactionPlatformFee.Text = Formatter.Grams(action.Fee);
+                TransactionPlatformFeePercent.Text = action.Price > 0
+                    ? " (" + FormatPercent(action.Fee, action.Price) + "%)"
+                    : string.Empty;
+                TransactionPlatformFeeRow.Visibility = Visibility.Visible;
+            }
+
+            ShowWalletFee(transaction.FeeAmount, Strings.GiftOnchainRowNetworkFee);
+
+            if (action.Price > 0 && action.Kind is WalletGiftKind.PutOnSale or WalletGiftKind.Repriced)
+            {
+                TransactionPriceRow.Header = action.Kind == WalletGiftKind.Repriced
+                    ? Strings.GiftOnchainRowNewPrice
+                    : Strings.GiftOnchainRowPrice;
+                TransactionPriceRow.Content = Formatter.Grams(action.Price);
+                TransactionPriceRow.Visibility = Visibility.Visible;
+            }
+
+            if (action.Kind == WalletGiftKind.Repriced && action.OldPrice > 0)
+            {
+                TransactionOldPrice.Text = Formatter.Grams(action.OldPrice);
+                TransactionOldPriceRow.Visibility = Visibility.Visible;
+            }
+
+            if (action.Kind == WalletGiftKind.OfferSent && action.ExpirationDate > 0)
+            {
+                TransactionExpirationRow.Content = Formatter.DateAt(action.ExpirationDate);
+                TransactionExpirationRow.Visibility = Visibility.Visible;
+            }
+
+            // -1 is a fine TDLib does not know, which is not the same as none.
+            if (action.Kind == WalletGiftKind.OfferCancelled && action.Fine >= 0)
+            {
+                TransactionCancellationFeeRow.Content = Formatter.Grams(action.Fine);
+                TransactionCancellationFeeRow.Visibility = Visibility.Visible;
+            }
+
+            if (action.Counterparty != null && !string.IsNullOrEmpty(action.CounterpartyAddress))
+            {
+                // The tail stays whole so the address is cut in the middle, however much of it fits.
+                var address = action.CounterpartyAddress;
+                var split = Math.Max(0, address.Length - 6);
+
+                _walletAddress = address;
+
+                TransactionAddressRow.Header = action.Counterparty;
+                TransactionAddressStart.Text = address.Substring(0, split);
+                TransactionAddressEnd.Text = address.Substring(split);
+                TransactionAddressRow.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void ShowWalletGiftTransfer(TonWalletTransaction transaction, TonWalletTransactionTypeTelegramGiftTransfer transfer)
+        {
+            // Outgoing is from the wallet to the profile.
+            UpgradedSubtitle.Text = transfer.IsOutgoing
+                ? Strings.WalletMovedToProfile
+                : Strings.WalletMovedFromProfile;
+
+            // The other side of a move between the profile and the wallet is the user's own account.
+            if (_clientService.TryGetUser(_clientService.Options.MyId, out User user))
+            {
+                TransactionPeerRow.Header = transfer.IsOutgoing ? Strings.WalletRecipient : Strings.WalletSender;
+                TransactionPeerPhoto.Source = ProfilePictureSource.User(_clientService, user);
+                TransactionPeerTitle.Text = user.FullName();
+                TransactionPeerRow.Visibility = Visibility.Visible;
+            }
+
+            ShowWalletFee(transaction.FeeAmount, Strings.WalletFee);
+        }
+
+        private void ShowWalletFee(long fee, string header)
+        {
+            if (fee == 0)
+            {
+                return;
+            }
+
+            var amount = Math.Abs(fee);
+            var converted = ConvertGrams(amount);
+
+            TransactionFeeRow.Header = header;
+            TransactionFee.Text = Formatter.Grams(amount);
+            TransactionFeeConverted.Text = converted.Length > 0 ? " ~" + converted : string.Empty;
+            TransactionFeeRow.Visibility = Visibility.Visible;
+        }
+
+        private string ConvertGrams(long nanograms)
+        {
+            var state = _clientService.Session.Resolve<IWalletService>().State;
+
+            return WalletHelper.TryToCurrency(_clientService, state, nanograms, out var amount)
+                ? Formatter.FormatAmountExact(amount, WalletHelper.CurrencyDecimals, state?.Currency ?? "USD")
+                : string.Empty;
+        }
+
+        // Whole when it is within a twentieth of one, which is what a fee set in basis points
+        // usually comes to; one decimal otherwise.
+        private static string FormatPercent(long part, long whole)
+        {
+            var percent = part * 100.0 / whole;
+            var rounded = Math.Round(percent);
+
+            return Math.Abs(percent - rounded) < 0.05
+                ? rounded.ToString("0", CultureInfo.InvariantCulture)
+                : percent.ToString("0.0", CultureInfo.InvariantCulture);
+        }
+
+        private void TransactionPeer_Click(Hyperlink sender, HyperlinkClickEventArgs args)
+        {
+            Hide();
+            _navigationService.NavigateToSender(new MessageSenderUser(_clientService.Options.MyId));
+        }
+
+        private void TransactionAddress_Click(object sender, RoutedEventArgs e)
+        {
+            if (_walletAddress != null)
+            {
+                var dataPackage = new DataPackage();
+                dataPackage.SetText(_walletAddress);
+                ClipboardEx.TrySetContent(dataPackage);
+
+                ToastPopup.Show(XamlRoot, Strings.WalletAddressCopied, ToastPopupIcon.Copied);
+            }
+        }
+
+        private enum WalletGiftKind
+        {
+            Bought,
+            Sold,
+            OfferAccepted,
+            PutOnSale,
+            RemovedFromSale,
+            OfferSent,
+            OfferCancelled,
+            OfferDeclined,
+            OfferExpired,
+            Repriced
+        }
+
+        /// <param name="Amount">Signed nanograms the transaction moved, the header's amount.</param>
+        /// <param name="Price">The price, or for a sale what the buyer paid before the platform's share.</param>
+        /// <param name="Fine">The cancellation fine, -1 when unknown.</param>
+        /// <param name="Counterparty">The label of the other side's address row, null for none.</param>
+        private readonly record struct WalletGiftAction(WalletGiftKind Kind, long Amount, long Price, long Fee, long OldPrice, int ExpirationDate, long Fine, string Counterparty, string CounterpartyAddress);
+
+        private static bool TryGetWalletGiftAction(TonWalletTransactionType type, UpgradedGift gift, out WalletGiftAction action)
+        {
+            switch (type)
+            {
+                case TonWalletTransactionTypeTelegramGiftPurchase purchase:
+                    action = new WalletGiftAction(WalletGiftKind.Bought, purchase.Amount, Math.Abs(purchase.Amount), 0, 0, 0, -1, Strings.GiftOnchainRowSeller, null);
+                    return true;
+                case TonWalletTransactionTypeTelegramGiftSale sale:
+                    // The platform's share comes out of the price before the rest reaches the
+                    // seller, so what the buyer paid is worked back from what arrived.
+                    var gross = Math.Abs(sale.Amount);
+                    var fee = 0L;
+
+                    if (sale.Amount > 0 && gift.FeeBasisPoints > 0 && gift.FeeBasisPoints < 10000)
+                    {
+                        gross = (long)Math.Round(sale.Amount * 10000m / (10000 - gift.FeeBasisPoints), MidpointRounding.AwayFromZero);
+                        fee = gross - sale.Amount;
+                    }
+
+                    action = new WalletGiftAction(WalletGiftKind.Sold, sale.Amount, gross, fee, 0, 0, -1, Strings.GiftOnchainRowBuyer, null);
+                    return true;
+                case TonWalletTransactionTypeTelegramGiftListing listing when listing.OldPrice > 0:
+                    action = new WalletGiftAction(WalletGiftKind.Repriced, listing.Amount, listing.Price, 0, listing.OldPrice, 0, -1, null, null);
+                    return true;
+                case TonWalletTransactionTypeTelegramGiftListing listing:
+                    action = new WalletGiftAction(WalletGiftKind.PutOnSale, listing.Amount, listing.Price, 0, 0, 0, -1, null, null);
+                    return true;
+                case TonWalletTransactionTypeTelegramGiftDelisting delisting:
+                    action = new WalletGiftAction(WalletGiftKind.RemovedFromSale, delisting.Amount, 0, 0, 0, 0, -1, null, null);
+                    return true;
+                case TonWalletTransactionTypeTelegramGiftOfferCreation creation:
+                    action = new WalletGiftAction(WalletGiftKind.OfferSent, -Math.Abs(creation.Amount), creation.Price, creation.ServiceFeeAmount, 0, creation.ExpirationDate, -1, Strings.WalletRecipient, creation.CounterpartyAddress);
+                    return true;
+                case TonWalletTransactionTypeTelegramGiftOfferAcceptance acceptance when acceptance.IsBuyer:
+                    // The buyer reads it as a purchase: the price went to the seller, the fee on top.
+                    action = new WalletGiftAction(WalletGiftKind.Bought, -(acceptance.Price + acceptance.ServiceFeeAmount), acceptance.Price, acceptance.ServiceFeeAmount, 0, 0, -1, Strings.GiftOnchainRowSeller, acceptance.CounterpartyAddress);
+                    return true;
+                case TonWalletTransactionTypeTelegramGiftOfferAcceptance acceptance:
+                    action = new WalletGiftAction(WalletGiftKind.OfferAccepted, acceptance.Price, acceptance.Price, acceptance.ServiceFeeAmount, 0, 0, -1, Strings.GiftOnchainRowBuyer, acceptance.CounterpartyAddress);
+                    return true;
+                case TonWalletTransactionTypeTelegramGiftOfferCancellation cancellation:
+                    action = new WalletGiftAction(WalletGiftKind.OfferCancelled, Math.Abs(cancellation.RefundAmount), cancellation.Price, 0, 0, 0, cancellation.FineAmount, Strings.WalletRecipient, cancellation.CounterpartyAddress);
+                    return true;
+                case TonWalletTransactionTypeTelegramGiftOfferDecline decline:
+                    action = new WalletGiftAction(WalletGiftKind.OfferDeclined, Math.Abs(decline.RefundAmount), decline.Price, 0, 0, 0, -1, Strings.WalletRecipient, decline.CounterpartyAddress);
+                    return true;
+                case TonWalletTransactionTypeTelegramGiftOfferExpiration expiration:
+                    action = new WalletGiftAction(WalletGiftKind.OfferExpired, Math.Abs(expiration.RefundAmount), expiration.Price, 0, 0, 0, -1, Strings.WalletRecipient, expiration.CounterpartyAddress);
+                    return true;
+                default:
+                    action = default;
+                    return false;
+            }
+        }
+
+        private static string ToStatus(WalletGiftKind kind)
+        {
+            return kind switch
+            {
+                WalletGiftKind.Bought => Strings.WalletOnchainGiftStatusPurchased,
+                WalletGiftKind.Sold => Strings.WalletOnchainGiftStatusSold,
+                WalletGiftKind.OfferAccepted => Strings.WalletOnchainGiftStatusOfferAccepted,
+                WalletGiftKind.PutOnSale => Strings.WalletOnchainGiftStatusPutOnSale,
+                WalletGiftKind.RemovedFromSale => Strings.WalletOnchainGiftStatusRemovedFromSale,
+                WalletGiftKind.OfferSent => Strings.WalletOnchainGiftOfferSent,
+                WalletGiftKind.OfferCancelled => Strings.WalletOnchainGiftOfferCancelled,
+                WalletGiftKind.OfferDeclined => Strings.WalletOnchainGiftOfferDeclined,
+                WalletGiftKind.OfferExpired => Strings.WalletOnchainGiftOfferExpired,
+                WalletGiftKind.Repriced => Strings.WalletOnchainGiftStatusPriceChanged,
+                _ => string.Empty
+            };
+        }
+
         private void UpdateOwned()
         {
             _owned = _gift?.Gift switch
@@ -223,7 +548,9 @@ namespace Telegram.Views.Stars.Popups
 
             Ribbon.Visibility = details && upgraded?.IsCrafted is true ? Visibility.Visible : Visibility.Collapsed;
             // The price takes the subtitle's place, so a gift whose header has no subtitle shows none.
-            ShowResalePrice(details && upgraded?.ResaleParameters != null && UpgradedSubtitle.Visibility == Visibility.Visible, animate);
+            // Opened from a wallet transaction, the pill holds the transaction's status instead.
+            var pill = _walletTransaction != null ? _walletStatus : upgraded?.ResaleParameters != null;
+            ShowResalePrice(details && pill && UpgradedSubtitle.Visibility == Visibility.Visible, animate);
             MoreButton.Visibility = details && (upgraded != null || CanToggleSaved || _gift?.CanBeDeleted is true || ProfileOwner != null) ? Visibility.Visible : Visibility.Collapsed;
             MoreButton.RequestedTheme = upgradedHeader ? ElementTheme.Dark : ElementTheme.Default;
         }
@@ -781,7 +1108,7 @@ namespace Telegram.Views.Stars.Popups
         {
             // Opened from a link, the current user's own gift arrives without a received gift identifier.
             // Held by the wallet it was opened from, a sale is the user's own.
-            return gift.ResaleParameters != null && !_owned && _collectible == null
+            return gift.ResaleParameters != null && !_owned && _collectible == null && _walletTransaction == null
                 ? GiftHelper.IsResaleInGrams(gift)
                     ? string.Format(Strings.ResellGiftBuyTON, GiftHelper.FormatResaleGrams(gift, true)).ReplaceStar(Icons.Gram14)
                     : Locale.Declension(Strings.R.ResellGiftBuy, gift.ResaleParameters.StarCount).ReplaceStar(Icons.Premium)
@@ -929,7 +1256,7 @@ namespace Telegram.Views.Stars.Popups
                     Upgrade2();
                 }
             }
-            else if (_gift?.Gift is SentGiftUpgraded { Gift.ResaleParameters: not null } && !_owned && _collectible == null)
+            else if (_gift?.Gift is SentGiftUpgraded { Gift.ResaleParameters: not null } && !_owned && _collectible == null && _walletTransaction == null)
             {
                 BuyResale();
             }
@@ -1676,11 +2003,12 @@ namespace Telegram.Views.Stars.Popups
                 flyout.CreateFlyoutItem(CopyLink, Strings.CopyLink, Icons.Link);
                 flyout.CreateFlyoutItem(Share, Strings.ShareFile, Icons.Share);
 
-                if (!_owned && GiftOnChainHelper.CanSendOffer(_clientService, upgraded))
+                // Neither offer from a wallet transaction, which is about what happened to the gift.
+                if (_walletTransaction == null && !_owned && GiftOnChainHelper.CanSendOffer(_clientService, upgraded))
                 {
                     flyout.CreateFlyoutItem(OfferToBuyOnChain, Strings.GiftOfferToBuyMenu, Icons.Coin);
                 }
-                else if (upgraded.CanSendPurchaseOffer)
+                else if (_walletTransaction == null && upgraded.CanSendPurchaseOffer)
                 {
                     flyout.CreateFlyoutItem(OfferToBuy, Strings.GiftOfferToBuyMenu, Icons.Coin);
                 }
