@@ -798,7 +798,13 @@ namespace Telegram.Views
 
         public void Handle(UpdateSuggestedActions update)
         {
-            this.BeginOnUIThread(UpdateBannerHints);
+            this.BeginOnUIThread(UpdateSuggestions);
+        }
+
+        private void UpdateSuggestions()
+        {
+            UpdateBannerHints();
+            ViewModel.ShowNextSuggestion();
         }
 
         public void Handle(UpdateContactCloseBirthdays update)
@@ -1582,6 +1588,8 @@ namespace Telegram.Views
                     MasterDetail.NavigationService.Navigate(typeof(SettingsStoragePage));
                 }
             }
+
+            ViewModel.ShowNextSuggestion();
         }
 
         private void Subscribe()

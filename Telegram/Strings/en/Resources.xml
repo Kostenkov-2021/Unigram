@@ -329,7 +329,7 @@
 
     <string name="HideNewChatsAlertTitle">Hide new chats?</string>
     <string name="HideNewChatsAlertText">You are receiving many new chats from users who are not in your Contact List. Do you want to have such chats **automatically muted** and **archived**?</string>
-
+    <string name="GoToSettings">GO TO SETTINGS</string>
     <string name="OpenProfile">Open Profile</string>
     <string name="OpenChannel2">Open Channel</string>
 
@@ -3215,7 +3215,7 @@
     <string name="RecoveryEmailSubtitle">You can set a recovery email to be able to reset your password and restore access to your Telegram account.</string>
     <string name="YourEmail">Your email</string>
     <string name="YourNewEmail">Your new email</string>
-
+    <string name="YourLoginEmailChangedSuccess">Your email has been changed.</string>
     <string name="YourEmailInfo">Please add your valid email. It is the only way to recover a forgotten password.</string>
     <string name="YourEmailSkip">Skip</string>
     <string name="YourEmailSkipWarning">Warning</string>
@@ -5060,7 +5060,7 @@
 
 
     <string name="AcceptCalls">Accept Calls</string>
-
+    <string name="ForceSetPasswordCancel">Yes, I\'m sure</string>
     <string name="Warning">Warning</string>
 
 
@@ -5157,8 +5157,8 @@
 
 
 
-
-
+    <string name="ForceSetPasswordAlertMessageShort_one">If you do not set a password, you will only be able to log into your account via SMS once every {0} day. Do you want to proceed without a password?</string>
+    <string name="ForceSetPasswordAlertMessageShort_other">If you do not set a password, you will only be able to log into your account via SMS once every {0} days. Do you want to proceed without a password?</string>
 
 
 
@@ -9618,10 +9618,10 @@
 
 
 
-
-
-
-
+    <string name="ForceSetPasswordAlertMessageShort_zero">If you do not set a password, you will only be able to log into your account via SMS once every {0} days. Do you want to proceed without a password?</string>
+    <string name="ForceSetPasswordAlertMessageShort_two">If you do not set a password, you will only be able to log into your account via SMS once every {0} days. Do you want to proceed without a password?</string>
+    <string name="ForceSetPasswordAlertMessageShort_few">If you do not set a password, you will only be able to log into your account via SMS once every {0} days. Do you want to proceed without a password?</string>
+    <string name="ForceSetPasswordAlertMessageShort_many">If you do not set a password, you will only be able to log into your account via SMS once every {0} days. Do you want to proceed without a password?</string>
 
 
 

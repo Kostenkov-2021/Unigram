@@ -18,14 +18,22 @@ namespace Telegram.Views.Settings.LoginEmail
     {
         private readonly IClientService _clientService;
 
-        public SettingsLoginEmailAddressPopup(IClientService clientService)
+        public SettingsLoginEmailAddressPopup(IClientService clientService, bool canBeCancelled = true)
         {
             InitializeComponent();
 
             _clientService = clientService;
 
             PrimaryButtonText = Strings.Continue;
-            SecondaryButtonText = Strings.Cancel;
+
+            if (canBeCancelled)
+            {
+                SecondaryButtonText = Strings.Cancel;
+            }
+            else
+            {
+                IsLightDismissEnabled = false;
+            }
         }
 
         public EmailAddressAuthenticationCodeInfo CodeInfo { get; private set; }

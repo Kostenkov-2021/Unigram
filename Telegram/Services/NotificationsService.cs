@@ -99,7 +99,6 @@ namespace Telegram.Services
         {
             _aggregator.Subscribe<UpdateUnreadMessageCount>(this, Handle)
                 .Subscribe<UpdateUnreadChatCount>(Handle)
-                .Subscribe<UpdateSuggestedActions>(Handle)
                 .Subscribe<UpdateServiceNotification>(Handle)
                 .Subscribe<UpdateNewOauthRequest>(Handle)
                 .Subscribe<UpdateTermsOfService>(Handle)
@@ -234,47 +233,6 @@ namespace Telegram.Services
                     _clientService.Send(new AcceptTermsOfService(update.TermsOfServiceId));
                 });
             }
-        }
-
-        public async void Handle(UpdateSuggestedActions update)
-        {
-            Logger.Info("UpdateSuggestedActions");
-
-            var enableArchiveAndMuteNewChats = update.AddedActions.FirstOrDefault(x => x is SuggestedActionEnableArchiveAndMuteNewChats);
-            if (enableArchiveAndMuteNewChats == null)
-            {
-                return;
-            }
-
-            await ViewService.WaitForMainWindowAsync();
-
-            var window = WindowContext.Active ?? WindowContext.Main;
-            var dispatcher = window?.Dispatcher;
-
-            dispatcher?.Dispatch(async () =>
-            {
-                var xamlRoot = window.XamlRoot;
-                if (xamlRoot == null)
-                {
-                    return;
-                }
-
-                if (enableArchiveAndMuteNewChats is SuggestedActionEnableArchiveAndMuteNewChats)
-                {
-                    var confirm = await MessagePopup.ShowAsync(xamlRoot, Strings.HideNewChatsAlertText, Strings.HideNewChatsAlertTitle, Strings.OK, Strings.Cancel);
-                    if (confirm == ContentDialogResult.Primary)
-                    {
-                        var response = await _clientService.SendAsync(new GetArchiveChatListSettings());
-                        if (response is ArchiveChatListSettings settings)
-                        {
-                            settings.ArchiveAndMuteNewChatsFromUnknownUsers = true;
-                            _clientService.Send(new SetArchiveChatListSettings(settings));
-                        }
-                    }
-
-                    _clientService.Send(new HideSuggestedAction(enableArchiveAndMuteNewChats));
-                }
-            });
         }
 
         public void Handle(UpdateNewOauthRequest update)

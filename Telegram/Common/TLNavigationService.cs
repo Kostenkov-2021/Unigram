@@ -936,13 +936,30 @@ namespace Telegram.Common
             return null;
         }
 
-        public async Task<PasswordState> NavigateToPasswordSetupAsync()
+        /// <param name="authorizationDelay">When above 0, leaving the intro first warns that without a
+        /// password the account can only log in once every that many days.</param>
+        public async Task<PasswordState> NavigateToPasswordSetupAsync(int authorizationDelay = 0)
         {
-            var intro = new SettingsPasswordIntroPopup();
-
-            if (ContentDialogResult.Primary != await ShowPopupAsync(intro))
+            while (true)
             {
-                return null;
+                var intro = new SettingsPasswordIntroPopup();
+
+                var start = await ShowPopupAsync(intro);
+                if (start == ContentDialogResult.Primary)
+                {
+                    break;
+                }
+
+                if (authorizationDelay <= 0)
+                {
+                    return null;
+                }
+
+                var leave = await ShowPopupAsync(Locale.Declension(Strings.R.ForceSetPasswordAlertMessageShort, authorizationDelay), Strings.Warning, Strings.ForceSetPasswordCancel, Strings.TwoStepVerificationSetPassword, destructive: true);
+                if (leave == ContentDialogResult.Primary)
+                {
+                    return null;
+                }
             }
 
             var password = new SettingsPasswordCreatePopup();

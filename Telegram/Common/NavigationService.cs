@@ -188,11 +188,11 @@ namespace Telegram.Common
             }
         }
 
-        public static Task<PasswordState> NavigateToPasswordSetupAsync(this INavigationService service)
+        public static Task<PasswordState> NavigateToPasswordSetupAsync(this INavigationService service, int authorizationDelay = 0)
         {
             if (service is TLNavigationService serviceEx)
             {
-                return serviceEx.NavigateToPasswordSetupAsync();
+                return serviceEx.NavigateToPasswordSetupAsync(authorizationDelay);
             }
 
             return Task.FromResult<PasswordState>(null);

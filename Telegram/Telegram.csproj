@@ -2622,6 +2622,7 @@
     <Compile Include="ViewModels\DialogViewModel.Footer.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.ChatListHint.cs" />
+    <Compile Include="ViewModels\MainViewModel.Suggestions.cs" />
     <Compile Include="ViewModels\SettingsViewModel.cs" />
     <Compile Include="ViewModels\SettingsViewModel.Suggestion.cs" />
     <Compile Include="ViewModels\Settings\SettingsSessionsViewModel.cs" />
