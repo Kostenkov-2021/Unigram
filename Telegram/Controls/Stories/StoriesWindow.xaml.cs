@@ -324,7 +324,8 @@ namespace Telegram.Controls.Stories
 
             viewModel.Aggregator.Subscribe<UpdateStoryStealthMode>(this, Handle)
                 .Subscribe<UpdateStoryPostSucceeded>(Handle)
-                .Subscribe<UpdateFailedStories>(Handle);
+                .Subscribe<UpdateFailedStories>(Handle)
+                .Subscribe<UpdateStoryChanged>(Handle);
 
             Update(viewModel, activeStories);
             UpdateStealthTimer();
@@ -353,6 +354,31 @@ namespace Telegram.Controls.Stories
         private void Handle(UpdateFailedStories update)
         {
             _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, UpdatePostState);
+        }
+
+        private void Handle(UpdateStoryChanged update)
+        {
+            _dispatcherQueue.TryEnqueue(() => UpdateReactions(update.Story));
+        }
+
+        private void UpdateReactions(StoryViewModel story)
+        {
+            if (_viewModel == null || _index < 0 || _index >= _viewModel.Items.Count)
+            {
+                return;
+            }
+
+            if (story != _viewModel.Items[_index].SelectedItem)
+            {
+                return;
+            }
+
+            if (ChannelInteractions.Visibility == Visibility.Visible)
+            {
+                ChannelInteractions.Update(story);
+            }
+
+            ActiveCard?.UpdateSuggestedReactions(story);
         }
 
         private void UpdatePostState()

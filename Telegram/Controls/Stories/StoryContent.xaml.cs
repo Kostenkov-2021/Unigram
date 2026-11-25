@@ -573,7 +573,7 @@ namespace Telegram.Controls.Stories
                         Style = Resources["SuggestedReactionButtonStyle"] as Style
                     };
 
-                    LoadButton(story, button, suggestedReaction);
+                    button.SetSuggestedReaction(story, suggestedReaction.ReactionType);
 
                     widget.Child = new Viewbox
                     {
@@ -622,37 +622,22 @@ namespace Telegram.Controls.Stories
             }
         }
 
-        private async void LoadButton(StoryViewModel story, StoryReactionButton button, StoryAreaTypeSuggestedReaction suggestedReaction)
+        /// <summary>
+        /// Redraws the suggested reactions of the story shown, in place, so that an effect playing
+        /// on one carries on.
+        /// </summary>
+        public void UpdateSuggestedReactions(StoryViewModel story)
         {
-            var reactionType = suggestedReaction.ReactionType;
-            if (reactionType is ReactionTypeEmoji emoji)
+            if (story != _viewModel?.SelectedItem)
             {
-                if (story.ClientService.TryGetCachedReaction(emoji.Emoji, out EmojiReaction reaction))
-                {
-                    button.SetReaction(story, reactionType, reaction, null);
-                }
-                else
-                {
-                    var response = await story.ClientService.SendAsync(new GetEmojiReaction(emoji.Emoji));
-                    if (response is EmojiReaction reaction2)
-                    {
-                        button.SetReaction(story, reactionType, reaction2, null);
-                    }
-                }
+                return;
             }
-            else if (reactionType is ReactionTypeCustomEmoji customEmoji)
+
+            foreach (var element in AreasPanel.Children)
             {
-                if (EmojiCache.TryGet(customEmoji.CustomEmojiId, out Sticker sticker))
+                if (element is StoryReactionWidget widget && widget.Child is Viewbox { Child: StoryReactionButton button } && widget.Tag is StoryArea { Type: StoryAreaTypeSuggestedReaction suggestedReaction })
                 {
-                    button.SetReaction(story, reactionType, sticker, null);
-                }
-                else
-                {
-                    var response = await EmojiCache.GetAsync(story.ClientService, customEmoji.CustomEmojiId);
-                    if (response is Sticker sticker2)
-                    {
-                        button.SetReaction(story, reactionType, sticker2, null);
-                    }
+                    button.SetSuggestedReaction(story, suggestedReaction.ReactionType);
                 }
             }
         }

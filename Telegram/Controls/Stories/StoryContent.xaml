@@ -27,15 +27,8 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid Margin="0,-4">
-                                <Image x:Name="Presenter"
-                                       Width="70"
-                                       Height="70" />
                                 <controls:CustomEmojiIcon x:Name="Icon"
-                                                          x:Load="False"
-                                                          Width="52"
-                                                          Height="52"
-                                                          FrameSize="52,52"
-                                                          IsViewportAware="False" />
+                                                          CleanOnSourceChanged="False" />
                                 <Popup x:Name="Overlay"
                                        IsHitTestVisible="False"
                                        Margin="-70"
@@ -44,7 +37,6 @@
                             </Grid>
 
                             <controls:AnimatedTextBlock x:Name="Count"
-                                                        x:Load="False"
                                                         Foreground="{TemplateBinding Foreground}"
                                                         FontWeight="SemiBold"
                                                         VerticalAlignment="Center"
