@@ -38,7 +38,13 @@ namespace Telegram.Controls
         public string Message
         {
             get => TextBlockHelper.GetMarkdown(MessageLabel);
-            set => TextBlockHelper.SetMarkdown(MessageLabel, value);
+            set
+            {
+                TextBlockHelper.SetMarkdown(MessageLabel, value);
+
+                // An empty TextBlock still measures a line, which a title-only popup would show as a gap.
+                MessageLabel.Visibility = string.IsNullOrEmpty(value) ? Visibility.Collapsed : Visibility.Visible;
+            }
         }
 
         public FormattedText FormattedMessage

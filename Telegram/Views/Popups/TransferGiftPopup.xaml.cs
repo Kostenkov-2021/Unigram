@@ -359,7 +359,7 @@ namespace Telegram.Views.Popups
         }
 
         /// <summary>
-        /// False, after offering to top up, when the balance is short of <paramref name="gramCentCount"/>.
+        /// False, after saying how much is missing, when the balance is short of <paramref name="gramCentCount"/>.
         /// </summary>
         public static async Task<bool> HasGramsAsync(IClientService clientService, INavigationService navigationService, long gramCentCount)
         {
@@ -376,16 +376,10 @@ namespace Telegram.Views.Popups
                 return true;
             }
 
-            // Rounded up, so that topping up the amount shown is always enough.
+            // Rounded up, so that adding the amount shown is always enough.
             var title = string.Format(Strings.TonNeededTitle, FormatGram((missing + 9_999_999) / 10_000_000));
 
-            var confirm = await navigationService.ShowPopupAsync(Strings.FragmentAddFunds, title, Strings.TopUpViaFragment, Strings.Cancel);
-            if (confirm == ContentDialogResult.Primary)
-            {
-                var url = clientService.Options.GramTopUpUrl;
-                MessageHelper.OpenUrl(null, null, string.IsNullOrEmpty(url) ? Strings.TopUpViaFragmentLink : url);
-            }
-
+            await navigationService.ShowPopupAsync(string.Empty, title, Strings.Close);
             return false;
         }
     }
