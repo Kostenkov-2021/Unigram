@@ -7,6 +7,9 @@ The following tools and SDKs are mandatory for the project development:
         * C++ Clang Compiler for Windows
     * Universal Windows Platform deveopment
 	    * Windows 11 SDK (10.0.26100.0)
+* [Rust](https://rustup.rs), through rustup, with `cargo` on PATH. Message widgets build their
+  JavaScript engine from `Libraries\nova-safe`: rustup installs the toolchain it pins and the build
+  adds each platform's target, so the first build of a platform takes a few minutes longer.
  
 ## Getting started
 

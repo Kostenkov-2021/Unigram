@@ -224,7 +224,13 @@
   <!-- Always a release Nova, in Debug too, as widget-sandbox links it: a debug one recurses far less deep in a
        JSThread's stack. cargo itself decides whether anything changed. -->
   <Target Name="TwNovaCargo" BeforeTargets="Link">
-    <Exec Command="cargo rustc --release --locked --package nova_embed_ffi --lib --crate-type staticlib --target $(TwNovaTarget) --target-dir &quot;$(TwNova)target&quot;" WorkingDirectory="$(TwNova)" />
+    <Exec Command="where /q rustup &amp;&amp; where /q cargo" IgnoreExitCode="true" StandardOutputImportance="low">
+      <Output TaskParameter="ExitCode" PropertyName="TwRustFound" />
+    </Exec>
+    <Error Condition="'$(TwRustFound)' != '0'" Text="Message widgets build the Nova engine with Rust: install rustup from https://rustup.rs, with cargo on PATH." />
+    <!-- rustup installs the toolchain nova-safe's rust-toolchain.toml pins on first use, but no target beyond the host's. -->
+    <Exec Command="rustup target add $(TwNovaTarget)" WorkingDirectory="$(TwNova)" StandardOutputImportance="low" />
+    <Exec Command="cargo rustc --release --locked --package nova_embed_ffi --lib --crate-type staticlib --target $(TwNovaTarget) --target-dir &quot;$(TwNova)target&quot;" WorkingDirectory="$(TwNova)" IgnoreStandardErrorWarningFormat="true" />
   </Target>
   <!-- The profile's UA layer for TwidgetCore's master CSS, read from widget-sandbox as twidget's CMake reads it. -->
   <Target Name="TwUaStylesheet" BeforeTargets="ClCompile" Inputs="$(TwSandbox)packages\core\profile.json;$(MSBuildThisFileDirectory)ua_stylesheet.ps1" Outputs="$(IntDir)generated\tw_ua_stylesheet.h">
