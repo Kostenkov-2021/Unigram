@@ -1565,7 +1565,7 @@ namespace Telegram.Navigation
 
         private async void Activate(IActivatedEventArgs args, INavigationService service)
         {
-            service ??= Current.RootNavigationService;
+            service ??= RootNavigationService;
 
             if (service == null || args == null)
             {
@@ -1642,7 +1642,7 @@ namespace Telegram.Navigation
         // The actions walk a copy. Dispatching to a window from its own thread runs the action
         // inline, and on a host where every window shares one thread that is every window: an
         // action that closes its window then removes it from All while All is being walked.
-        private static WindowContext[] Snapshot()
+        public static WindowContext[] Snapshot()
         {
             lock (_allLock)
             {
