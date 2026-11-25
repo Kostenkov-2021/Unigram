@@ -3142,6 +3142,7 @@
     <string name="ClearSearchRemove">Remove</string>
     <string name="ClearButton">Clear All</string>
     <string name="AddCaption">Add a caption...</string>
+    <string name="AddACaption">Add Caption</string>
     <string name="Caption">Caption</string>
 
 

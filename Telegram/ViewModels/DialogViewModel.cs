@@ -2772,6 +2772,10 @@ namespace Telegram.ViewModels
             {
                 await HandlePackageAsync(package);
             }
+            else if (Type is DialogType.History or DialogType.Thread && state.TryRemove("edit_media", out Message editMedia))
+            {
+                EditAndReply(editMedia);
+            }
             else if (Type is DialogType.History && state.TryRemove("videoChat", out string videoChat))
             {
                 _voipService.JoinGroupCall(NavigationService, chat.Id, videoChat);

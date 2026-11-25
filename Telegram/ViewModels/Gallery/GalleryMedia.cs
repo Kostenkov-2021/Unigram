@@ -144,6 +144,8 @@ namespace Telegram.ViewModels.Gallery
 
         public bool CanRecognizeText => IsPhoto && !HasProtectedContent;
 
+        public bool CanBeEdited { get; protected init; }
+
         public virtual InputMessageContent ToInput()
         {
             switch (_source)

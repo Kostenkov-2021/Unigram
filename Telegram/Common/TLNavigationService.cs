@@ -533,6 +533,12 @@ namespace Telegram.Common
                 }
 
                 OverlayWindow.TryHide(XamlRoot, ContentDialogResult.None);
+
+                // Only once the gallery is down: the editor is an overlay too, and would be the one hidden.
+                if (state != null && state.TryGet("edit_media", out Message editMedia))
+                {
+                    page.ViewModel.EditAndReply(editMedia);
+                }
             }
             else
             {

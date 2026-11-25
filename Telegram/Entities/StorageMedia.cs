@@ -57,6 +57,12 @@ namespace Telegram.Entities
 
         public bool IsScreenshot { get; set; }
 
+        /// <summary>
+        /// The Telegram file this media was read from, which is sent by its identifier for as long
+        /// as nothing would change it.
+        /// </summary>
+        public File OriginalFile { get; set; }
+
         public virtual int Width { get; }
         public virtual int Height { get; }
 

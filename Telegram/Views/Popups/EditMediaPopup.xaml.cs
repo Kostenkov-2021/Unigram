@@ -110,6 +110,14 @@ namespace Telegram.Views.Popups
                 return;
             }
 
+            // An animation already on Telegram stays one, and its sound track, if any, is never played.
+            if (video.IsOriginalAnimation)
+            {
+                TrimToolbar.IsMuted = true;
+                TrimToolbar.CanMute = false;
+                return;
+            }
+
             QualityButton.Visibility = Visibility.Visible;
 
             var state = video.EditState;

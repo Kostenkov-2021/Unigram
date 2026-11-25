@@ -287,6 +287,11 @@ namespace Telegram.Views.Popups
 
         public long PaidMessageStarCount { get; private set; }
 
+        /// <summary>
+        /// Opens the editor on the first item once the popup is on screen.
+        /// </summary>
+        public bool EditOnOpen { get; set; }
+
         public SendFilesPopup(ComposeViewModel viewModel, StorageMediaSource source, Func<StorageMedia, bool> validating, bool media, ChatPermissions permissions, bool ttlAllowed, bool schedule, bool savedMessages, bool editing)
         {
             InitializeComponent();
@@ -370,6 +375,8 @@ namespace Telegram.Views.Popups
                 : Visibility.Visible;
 
             MoreButton.Margin = new Thickness(0, -62, editing ? 40 : 80, 0);
+
+            Opened += OnOpened;
 
             UpdateView();
             UpdatePanel();
@@ -690,7 +697,7 @@ namespace Telegram.Views.Popups
                 return;
             }
 
-            if (storage is StorageVideo video)
+            if (storage is StorageVideo { IsOriginalAnimation: false } video)
             {
                 mute.IsChecked = video.IsMuted;
                 mute.Visibility = Visibility.Visible;
@@ -1448,44 +1455,43 @@ namespace Telegram.Views.Popups
             }
         }
 
-        private async void Crop_Click(object sender, RoutedEventArgs e)
+        private void Crop_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as ToggleButton;
             if (button.Tag is StorageMedia media)
             {
-                var parent = button.GetParent<AspectView>();
-                if (parent != null)
-                {
-                    ConnectedAnimationServiceEx.PrepareToAnimate("EditMediaPopup", parent);
-                }
-
-                var popup = new EditMediaPopup(XamlRoot, ViewModel.ClientService, media);
-
-                var confirm = await popup.ShowAsync();
-                if (confirm == ContentDialogResult.Primary)
-                {
-                    _thumbnails.Invalidate(media);
-
-                    UpdateView();
-                    UpdatePanel();
-                }
+                Edit(media, button.GetParent<AspectView>());
             }
         }
 
-        private async void Album_ItemClick(object sender, StorageMedia args)
+        private void Album_ItemClick(object sender, StorageMedia args)
         {
-            var parent = sender as UIElement;
-            if (parent != null)
+            Edit(args, sender as UIElement);
+        }
+
+        private void OnOpened(ModalPopup sender, ModalPopupOpenedEventArgs args)
+        {
+            Opened -= OnOpened;
+
+            if (EditOnOpen && Items.Count > 0)
             {
-                ConnectedAnimationServiceEx.PrepareToAnimate("EditMediaPopup", parent);
+                Edit(Items[0], null);
+            }
+        }
+
+        private async void Edit(StorageMedia media, UIElement source)
+        {
+            if (source != null)
+            {
+                ConnectedAnimationServiceEx.PrepareToAnimate("EditMediaPopup", source);
             }
 
-            var popup = new EditMediaPopup(XamlRoot, ViewModel.ClientService, args);
+            var popup = new EditMediaPopup(XamlRoot, ViewModel.ClientService, media);
 
             var confirm = await popup.ShowAsync();
             if (confirm == ContentDialogResult.Primary)
             {
-                _thumbnails.Invalidate(args);
+                _thumbnails.Invalidate(media);
 
                 UpdateView();
                 UpdatePanel();
