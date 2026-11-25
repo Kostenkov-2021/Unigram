@@ -82,7 +82,7 @@ namespace Telegram.Controls.Drawers
 
         // A popup of its own, so it stays open when the panel collapses, but a tone picked once
         // the drawer is deactivated would reach a view model that is gone.
-        private Flyout _skinFlyout;
+        private MenuFlyout _skinFlyout;
 
         private readonly AnimatedListHandler _handler;
         private readonly ZoomableListHandler _zoomer;
@@ -373,15 +373,7 @@ namespace Telegram.Controls.Drawers
                     var container = ScrollingHost.ContainerFromItem(e.ClickedItem);
                     if (container != null)
                     {
-                        var flyout = new Flyout
-                        {
-                            FlyoutPresenterStyle = BootStrapper.Current.Resources["CommandFlyoutPresenterStyle"] as Style,
-                        };
-
-                        flyout.Content = new EmojiSkinFlyout(this, flyout, skin);
-                        flyout.ShowAt(container as UIElement, FlyoutPlacementMode.Top);
-
-                        _skinFlyout = flyout;
+                        ShowSkinFlyout(container, skin);
                         return;
                     }
                 }
@@ -884,16 +876,31 @@ namespace Telegram.Controls.Drawers
             }
             else if (item is EmojiSkinData emoji)
             {
-                var flyout = new Flyout
-                {
-                    FlyoutPresenterStyle = BootStrapper.Current.Resources["CommandFlyoutPresenterStyle"] as Style,
-                };
-
-                flyout.Content = new EmojiSkinFlyout(this, flyout, emoji);
-                flyout.ShowAt(sender, FlyoutPlacementMode.Top);
-
-                _skinFlyout = flyout;
+                ShowSkinFlyout(sender, emoji);
             }
+        }
+
+        private void ShowSkinFlyout(DependencyObject target, EmojiSkinData emoji)
+        {
+            var style = new Style(typeof(MenuFlyoutPresenter));
+            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
+
+            var flyout = new MenuFlyout
+            {
+                MenuFlyoutPresenterStyle = style
+            };
+            flyout.Items.Add(new MenuFlyoutContent
+            {
+                Content = new EmojiSkinFlyout(this, flyout, emoji),
+                Padding = new Thickness(0)
+            });
+
+            flyout.ShowAt(target, new FlyoutShowOptions
+            {
+                Placement = FlyoutPlacementMode.Top
+            });
+
+            _skinFlyout = flyout;
         }
 
         private void Player_Ready(object sender, System.EventArgs e)
