@@ -532,6 +532,8 @@ namespace Telegram.Controls.Media
 
         public const string PaintBrush = "\uE90E";
         public const string PaintBrushFilled = "\uEA51";
+        public const string Brush = "\uF7BC";
+        public const string Brush16 = "\uF7BD";
         public const string WallpaperFilled = "\uEA50";
 
         public const string HandWaveFilled = "\uEA7B";
