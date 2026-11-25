@@ -75,7 +75,6 @@ namespace Telegram.Navigation
 
             _window = window;
             _handle = GetWindowHandle(window);
-            _current = this;
 
             Dispatcher = DispatcherContext.Current;
 
@@ -874,11 +873,9 @@ namespace Telegram.Navigation
         /// <summary>
         /// The AppWindow an element is actually in, straight off its XamlRoot.
         ///
-        /// This exists so that nothing has to reach for <see cref="Current"/>, which is
-        /// thread-static and therefore meaningless on a host that puts every window on one thread -
-        /// it answers whichever window was created last. It also needs no <c>_mapping</c> entry, so
-        /// it works during a page's Loaded whether or not the presenter has registered its
-        /// XamlRoot yet.
+        /// Every window shares one thread here, so there is no "window of this thread" to ask
+        /// instead. It also needs no <c>_mapping</c> entry, so it works during a page's Loaded
+        /// whether or not the presenter has registered its XamlRoot yet.
         /// </summary>
         internal static AppWindow GetAppWindow(UIElement element)
         {
@@ -986,17 +983,6 @@ namespace Telegram.Navigation
             var already = All.Find(x => x.PersistedId == persistedId);
             already?.Activate();
         }
-
-        /// <summary>
-        /// TEMPORARY, and inherited from the Win32 half along with its problem: a thread-static "the
-        /// window on this thread" answers something only while a thread hosts exactly one window,
-        /// and this host puts every window on one thread by design, so it is even less true here
-        /// than there.
-        /// </summary>
-        [ThreadStatic]
-        private static WindowContext _current;
-
-        public static WindowContext Current => _current;
 
         #endregion
 
