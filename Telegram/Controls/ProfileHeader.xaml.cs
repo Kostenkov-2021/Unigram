@@ -786,6 +786,7 @@ namespace Telegram.Controls
             {
                 Username.Content = username;
                 Username.Visibility = Visibility.Visible;
+                UsernameQrCode.Visibility = Visibility.Visible;
             }
             else
             {
@@ -1308,6 +1309,11 @@ namespace Telegram.Controls
                             Username.Content = link.Link;
                             Username.Visibility = Visibility.Visible;
 
+                            // The code encodes the forum's username, which a private forum does not have.
+                            UsernameQrCode.Visibility = link.IsPublic
+                                ? Visibility.Visible
+                                : Visibility.Collapsed;
+
                             if (link.IsPublic)
                             {
                                 ActiveUsernames.Inlines.Clear();
@@ -1328,6 +1334,7 @@ namespace Telegram.Controls
                 {
                     Username.Content = username;
                     Username.Visibility = Visibility.Visible;
+                    UsernameQrCode.Visibility = Visibility.Visible;
                 }
                 else
                 {

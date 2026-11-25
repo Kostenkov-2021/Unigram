@@ -891,7 +891,7 @@ namespace Telegram.ViewModels
         public void ViewUsername()
         {
             var chat = _chat;
-            if (chat == null)
+            if (chat == null || _forumTopic != null)
             {
                 return;
             }
@@ -910,7 +910,11 @@ namespace Telegram.ViewModels
                 return;
             }
 
-            if (ClientService.HasActiveUsername(chat, out string username))
+            if (_forumTopic != null)
+            {
+                CopyForumTopicLink(chat);
+            }
+            else if (ClientService.HasActiveUsername(chat, out string username))
             {
                 MessageHelper.CopyText(XamlRoot, $"@{username}");
             }
@@ -924,9 +928,22 @@ namespace Telegram.ViewModels
                 return;
             }
 
-            if (ClientService.HasActiveUsername(chat, out string username))
+            if (_forumTopic != null)
+            {
+                CopyForumTopicLink(chat);
+            }
+            else if (ClientService.HasActiveUsername(chat, out string username))
             {
                 MessageHelper.CopyLink(ClientService, XamlRoot, new InternalLinkTypePublicChat(username, string.Empty, false, string.Empty));
+            }
+        }
+
+        private async void CopyForumTopicLink(Chat chat)
+        {
+            var response = await ClientService.SendAsync(new GetForumTopicLink(chat.Id, _forumTopic.Info.ForumTopicId));
+            if (response is MessageLink link)
+            {
+                MessageHelper.CopyLink(XamlRoot, link.Link, link.IsPublic);
             }
         }
 

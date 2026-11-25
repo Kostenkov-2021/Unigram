@@ -490,7 +490,8 @@
                         </MenuFlyout>
                     </Button.ContextFlyout>
                     <controls:SettingsButton.Badge>
-                        <controls:GlyphButton Content="&#xEACA;"
+                        <controls:GlyphButton x:Name="UsernameQrCode"
+                                              Content="&#xEACA;"
                                               Click="{x:Bind ViewModel.ShareUsername}"
                                               Foreground="{ThemeResource AccentFillColorDefaultBrush}"
                                               AutomationProperties.Name="{CustomResource QrCode}"
