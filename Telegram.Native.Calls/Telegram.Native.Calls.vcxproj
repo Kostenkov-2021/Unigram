@@ -140,12 +140,8 @@
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\ChannelManager.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\DirectConnectionChannel.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\FieldTrialsConfig.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\AudioStreamingPartInternal.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\AudioStreamingPartPersistentDecoder.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\AVIOContextImpl.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupAudioCapturePostProcessor.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupFrameTransformer.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\StreamingAudioRenderer.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\utils\gzip.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\ContentNegotiation.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\CustomDcSctpSocket.h" />
@@ -170,9 +166,6 @@
       <DependentUpon>BroadcastTimeRequestedEventArgs.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\AudioStreamingPart.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\StreamingMediaContext.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\VideoStreamingPart.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\SctpDataChannelProviderInterfaceImpl.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\TurnCustomizerImpl.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\platform\uwp\UwpContext.h" />
@@ -186,6 +179,24 @@
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\StaticThreads.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupInstanceCustomImpl.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupNetworkManager.h" />
+    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\ScreencastSendParameters.h" />
+    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupExternalAudio.h" />
+    <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\VideoStatsLog.h" />
+    <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\CompatSignalingFraming.h" />
+    <ClInclude Include="..\Libraries\tgcalls\macos\Sources\BroadcastAudio\BroadcastAudioClock.h" />
+    <ClInclude Include="..\Libraries\tgcalls\macos\Sources\BroadcastAudio\BroadcastAudioCore.h" />
+    <ClInclude Include="..\Libraries\tgcalls\macos\Sources\BroadcastAudio\BroadcastAudioLevels.h" />
+    <ClInclude Include="..\Libraries\tgcalls\macos\Sources\BroadcastAudio\BroadcastSpscQueue.h" />
+    <ClInclude Include="..\Libraries\tgcalls\macos\Sources\BroadcastMedia\BroadcastListenerAudio.h" />
+    <ClInclude Include="..\Libraries\tgcalls\macos\Sources\BroadcastMedia\BroadcastMediaIO.h" />
+    <ClInclude Include="..\Libraries\tgcalls\macos\Sources\BroadcastMedia\BroadcastPartHeader.h" />
+    <ClInclude Include="Broadcast\BroadcastController.h" />
+    <ClInclude Include="Broadcast\BroadcastHandoff.h" />
+    <ClInclude Include="Broadcast\BroadcastQueue.h" />
+    <ClInclude Include="Broadcast\BroadcastSession.h" />
+    <ClInclude Include="Broadcast\BroadcastStream.h" />
+    <ClInclude Include="Broadcast\BroadcastVideo.h" />
+    <ClInclude Include="Broadcast\BroadcastVideoPart.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\AudioDeviceHelper.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupInstanceImpl.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\CodecSelectHelper.h" />
@@ -289,22 +300,10 @@
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\FieldTrialsConfig.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\AudioStreamingPartInternal.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\AudioStreamingPartPersistentDecoder.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\AVIOContextImpl.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupAudioCapturePostProcessor.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupFrameTransformer.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\StreamingAudioRenderer.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\utils\gzip.cpp">
@@ -365,15 +364,6 @@
       <DependentUpon>BroadcastTimeRequestedEventArgs.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\AudioStreamingPart.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\StreamingMediaContext.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\VideoStreamingPart.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\SctpDataChannelProviderInterfaceImpl.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -399,6 +389,54 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupNetworkManager.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\ScreencastSendParameters.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupExternalAudio.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\v2\VideoStatsLog.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\macos\Sources\BroadcastAudio\BroadcastAudioClock.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\macos\Sources\BroadcastAudio\BroadcastAudioCore.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\macos\Sources\BroadcastAudio\BroadcastAudioLevels.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\macos\Sources\BroadcastMedia\BroadcastMediaIO.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\macos\Sources\BroadcastMedia\BroadcastPartHeader.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Broadcast\BroadcastController.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Broadcast\BroadcastHandoff.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Broadcast\BroadcastListenerAudio.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Broadcast\BroadcastQueue.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Broadcast\BroadcastSession.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Broadcast\BroadcastStream.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Broadcast\BroadcastVideo.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Broadcast\BroadcastVideoPart.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\AudioDeviceHelper.cpp">
