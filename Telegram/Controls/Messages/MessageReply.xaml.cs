@@ -354,8 +354,16 @@ namespace Telegram.Controls.Messages
                 _ => (null, null, 0)
             };
 
+            if (_light != white)
+            {
+                BackgroundOverlay.Visibility = white
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+            }
+
             if (white && !_light)
             {
+                BackgroundOverlay.Visibility = Visibility.Collapsed;
                 Foreground =
                     Background =
                     SubtleBrush =
