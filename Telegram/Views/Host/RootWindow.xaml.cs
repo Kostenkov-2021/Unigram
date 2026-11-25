@@ -65,6 +65,11 @@ namespace Telegram.Views.Host
         // where navigation should go instead.
         INavigationService INavigationHost.NavigationService => _navigationService;
 
+        protected override void OnWindowClosed()
+        {
+            Destroy(_navigationService);
+        }
+
         protected override void OnPopupOpened()
         {
             if (_navigationService.Frame.Content is IRootContentPage content)
