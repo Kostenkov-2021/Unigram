@@ -48,6 +48,11 @@ namespace Telegram.Controls.Messages
 
         protected bool IsTemplateApplied => Icon != null;
 
+        /// <summary>
+        /// The reaction the icon shows, kept after the button lets go of its message.
+        /// </summary>
+        internal ReactionType IconType => _reactionType;
+
         protected override AutomationPeer OnCreateAutomationPeer()
         {
             return new ReactionButtonAutomationPeer(this);
@@ -145,6 +150,14 @@ namespace Telegram.Controls.Messages
             {
                 Overlay.IsOpen = false;
                 Overlay.Child = null;
+            }
+
+            // OnPaused does not swap back once the button is out of the tree, and UpdateIcon keeps
+            // the source of a button reused for the same reaction, so the next Animate would find
+            // it animated already and skip the fresh clone it plays from.
+            if (Icon?.Source is ReactionFileSource reaction && reaction.IsAnimated)
+            {
+                Icon.Source = reaction.Clone(false);
             }
         }
 

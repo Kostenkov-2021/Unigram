@@ -112,7 +112,10 @@ namespace Telegram.Controls.Messages
 
         public void SetUnread(UnreadReaction unread)
         {
-            if (!IsTemplateApplied)
+            // A pooled button keeps its template, so it can be asked before it is loaded, and Loaded
+            // may only come on the next tick. Animate drops its effect when not connected by the time
+            // TDLib answers, which a cached reaction does before that tick.
+            if (!IsTemplateApplied || !IsConnected)
             {
                 _unread = unread;
             }
@@ -211,6 +214,11 @@ namespace Telegram.Controls.Messages
         }
 
         protected override void OnIconReady()
+        {
+            SetUnread(_unread);
+        }
+
+        protected override void OnLoaded()
         {
             SetUnread(_unread);
         }

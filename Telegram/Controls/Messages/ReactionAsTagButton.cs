@@ -28,6 +28,8 @@ namespace Telegram.Controls.Messages
 
         protected override void OnLoaded()
         {
+            base.OnLoaded();
+
             if (_tag != null)
             {
                 _tag.PropertyChanged += OnPropertyChanged;
