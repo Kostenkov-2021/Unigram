@@ -1989,6 +1989,9 @@
     <Compile Include="Views\Wallet\Popups\WalletBackupPopup.xaml.cs">
       <DependentUpon>WalletBackupPopup.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\Wallet\Popups\WalletCollectiblePopup.xaml.cs">
+      <DependentUpon>WalletCollectiblePopup.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\Wallet\Popups\WalletConnectedAppsPopup.xaml.cs">
       <DependentUpon>WalletConnectedAppsPopup.xaml</DependentUpon>
     </Compile>
@@ -4728,6 +4731,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\Wallet\Popups\WalletBackupPopup.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Wallet\Popups\WalletCollectiblePopup.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

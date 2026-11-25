@@ -39,7 +39,15 @@ namespace Telegram.Views.Stars.Popups
             PrimaryButtonText = primary;
             SecondaryButtonText = Strings.Cancel;
 
-            TextBlockHelper.SetMarkdown(MessageText, text);
+            if (string.IsNullOrEmpty(text))
+            {
+                // An empty TextBlock still measures a line.
+                MessageText.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                TextBlockHelper.SetMarkdown(MessageText, text);
+            }
         }
 
         /// <summary>

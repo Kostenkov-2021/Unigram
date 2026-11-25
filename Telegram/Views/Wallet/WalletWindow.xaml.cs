@@ -507,54 +507,11 @@ namespace Telegram.Views.Wallet
             // Somewhere to send to, typed. The other way in is the Send pill on a transaction,
             // which already knows who it is sending to; this is the one for everybody else, until
             // there is a picker.
-            var popup = new InputPopup
+            var recipient = await WalletHelper.AskRecipientAsync(_navigationService, _wallet, Strings.WalletSendGrams);
+            if (recipient != null)
             {
-                Title = Strings.WalletSendGrams,
-                PlaceholderText = Strings.WalletAddressOrName,
-                PrimaryButtonText = Strings.Next,
-                SecondaryButtonText = Strings.Cancel,
-                MinLength = 1
-            };
-
-            var confirm = await _navigationService.ShowPopupAsync(popup);
-            if (confirm != ContentDialogResult.Primary)
-            {
-                return;
+                await SendAsync(0, recipient.Address, recipient.Domain);
             }
-
-            var recipient = popup.Text.Trim();
-            var domain = string.Empty;
-
-            if (recipient.EndsWith(".ton", StringComparison.OrdinalIgnoreCase))
-            {
-                domain = recipient;
-
-                try
-                {
-                    recipient = await _wallet.ResolveDnsAsync(recipient);
-                }
-                catch (Exception ex)
-                {
-                    // An unknown name is one of the ways this fails, so it is said the same way.
-                    Logger.Error("wallet name could not be resolved: " + ex.Message);
-                    recipient = null;
-                }
-
-                if (string.IsNullOrEmpty(recipient))
-                {
-                    _navigationService.ShowToast(string.Format(Strings.WalletSearchNoResults, domain), ToastPopupIcon.Error);
-                    return;
-                }
-            }
-            else if (!WalletHelper.IsValidAddress(recipient))
-            {
-                _navigationService.ShowToast(Strings.WalletInvalidAddress, ToastPopupIcon.Error);
-                return;
-            }
-
-            // The name is kept, not just what it resolved to: it is what the user typed and what
-            // the history should say the transfer went to.
-            await SendAsync(0, recipient, domain);
         }
 
         private void Navigation_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -837,6 +794,10 @@ namespace Telegram.Views.Wallet
             if (e.ClickedItem is TonNft { Gift: UpgradedGift gift } collectible)
             {
                 MessageHelper.NavigateToUpgradedGift(_clientService, _navigationService, gift.Name, collectible, this);
+            }
+            else if (e.ClickedItem is TonNft other)
+            {
+                _navigationService.ShowPopup(new WalletCollectiblePopup(_clientService, _navigationService, other));
             }
         }
 

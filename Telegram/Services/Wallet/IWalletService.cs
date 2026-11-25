@@ -167,6 +167,18 @@ namespace Telegram.Services.Wallet
         Task<WalletTransactionResult> SendTransactionAsync(IReadOnlyList<TonWalletMessage> messages, IReadOnlyList<TonWalletMessage> gaslessMessages, WalletVault.WalletVaultLease lease);
 
         /// <summary>
+        /// Builds the TEP-62 transfer of the NFT at <paramref name="nftAddress"/> to
+        /// <paramref name="recipient"/> and emulates it, or null when the wallet does not hold it
+        /// directly, it is on sale, or the emulation fails.
+        /// </summary>
+        Task<WalletNftTransfer> PreviewNftTransferAsync(string nftAddress, string recipient);
+
+        /// <summary>
+        /// Signs a previewed NFT transfer and sends it with <c>sendTonWalletTransaction</c>.
+        /// </summary>
+        Task<WalletTransactionResult> SendNftTransferAsync(WalletNftTransfer transfer, WalletVault.WalletVaultLease lease);
+
+        /// <summary>
         /// What the network would charge for a transfer, in nanograms, or null when it cannot be
         /// said - no wallet, no recipient yet, or the estimate did not come back.
         /// </summary>

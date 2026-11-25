@@ -82,6 +82,60 @@ namespace Telegram.Common
         }
 
         /// <summary>
+        /// Somewhere to send to, typed: an address, or a .ton name resolved to one. Null when the
+        /// user cancels or what they typed leads nowhere, which has been said by then.
+        /// </summary>
+        public static async Task<WalletRecipient> AskRecipientAsync(INavigationService navigation, IWalletService wallet, string title)
+        {
+            var popup = new InputPopup
+            {
+                Title = title,
+                PlaceholderText = Strings.WalletAddressOrName,
+                PrimaryButtonText = Strings.Next,
+                SecondaryButtonText = Strings.Cancel,
+                MinLength = 1
+            };
+
+            var confirm = await navigation.ShowPopupAsync(popup);
+            if (confirm != ContentDialogResult.Primary)
+            {
+                return null;
+            }
+
+            var address = popup.Text.Trim();
+            var domain = string.Empty;
+
+            if (address.EndsWith(".ton", StringComparison.OrdinalIgnoreCase))
+            {
+                domain = address;
+
+                try
+                {
+                    address = await wallet.ResolveDnsAsync(address);
+                }
+                catch (Exception ex)
+                {
+                    // An unknown name is one of the ways this fails, so it is said the same way.
+                    Logger.Error("wallet name could not be resolved: " + ex.Message);
+                    address = null;
+                }
+
+                if (string.IsNullOrEmpty(address))
+                {
+                    navigation.ShowToast(string.Format(Strings.WalletSearchNoResults, domain), ToastPopupIcon.Error);
+                    return null;
+                }
+            }
+            else if (!IsValidAddress(address))
+            {
+                navigation.ShowToast(Strings.WalletInvalidAddress, ToastPopupIcon.Error);
+                return null;
+            }
+
+            return new WalletRecipient(address, domain);
+        }
+
+        /// <summary>
         /// An address in the 48-character form the send card has room for: a raw one is written
         /// as the bounceable friendly address it stands for, anything else is returned as it is.
         /// </summary>
@@ -672,4 +726,8 @@ namespace Telegram.Common
                 : MessagePopup.ShowAsync(xamlRoot, message, title, Strings.OK);
         }
     }
+
+    /// <param name="Domain">The .ton name the address was resolved from, or empty: kept because it
+    /// is what the user typed, and what the history should say the transfer went to.</param>
+    public sealed record WalletRecipient(string Address, string Domain);
 }

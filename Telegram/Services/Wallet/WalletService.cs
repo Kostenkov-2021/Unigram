@@ -1077,7 +1077,88 @@ namespace Telegram.Services.Wallet
                 throw new WalletTransferInProgressException();
             }
 
+            var amount = BigInteger.Zero;
+
+            foreach (var message in messages)
+            {
+                amount += message.GramAmount;
+            }
+
             var intent = new SendIntent(new SendExpiration.EngineDefault(), regular);
+            return await SendPreparedAsync(client, intent, relayed, messages[0].DestinationAddress, amount);
+        }
+
+        // Attached to the item for its own fees; the forward goes on to the new owner with the
+        // ownership notification, and what the item leaves unspent comes back as excess.
+        private const string NftAttachedNanograms = "100000000";
+        private const string NftForwardNanograms = "10000000";
+
+        public async Task<WalletNftTransfer> PreviewNftTransferAsync(string nftAddress, string recipient)
+        {
+            var client = _client;
+            if (client == null)
+            {
+                return null;
+            }
+
+            var intent = new NftTransferIntent(
+                nftAddress,
+                recipient,
+                new NftTransferFunding.Exact(NftAttachedNanograms, NftForwardNanograms),
+                new NftTransferPayload.Empty(),
+                new SendExpiration.EngineDefault());
+
+            try
+            {
+                var preview = await client.PreviewNftTransfer(new NftTransferPreviewRequest(NewRecordId(), intent));
+
+                // The whole trace rather than the wallet's share: the item and the notification
+                // are paid for out of the attached amount, and only what they leave comes back.
+                var fee = BigInteger.Parse(preview.Emulation.TraceFeesNanograms, CultureInfo.InvariantCulture);
+                return new WalletNftTransfer(preview.Messages, fee);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("wallet NFT transfer could not be prepared: " + ex.Message);
+                return null;
+            }
+        }
+
+        public async Task<WalletTransactionResult> SendNftTransferAsync(WalletNftTransfer transfer, WalletVault.WalletVaultLease lease)
+        {
+            var client = _client;
+            if (client == null || _descriptor == null)
+            {
+                throw new WalletNotBoundException();
+            }
+
+            await EnsureLeaseAsync(lease);
+
+            if (_rotation != null)
+            {
+                throw new WalletRotationPendingException();
+            }
+
+            if (HasUnsettledTransfer())
+            {
+                throw new WalletTransferInProgressException();
+            }
+
+            // The engine submits its own NFT sends, so the messages the preview emulated are signed
+            // here for TDLib instead; the body, query ID included, is already fixed in them. No
+            // relayed form, as for a Fragment sale: it would be a message of its own.
+            var intent = new SendIntent(new SendExpiration.EngineDefault(), transfer.Messages);
+            var amount = BigInteger.Parse(NftAttachedNanograms, CultureInfo.InvariantCulture);
+
+            return await SendPreparedAsync(client, intent, null, transfer.Messages[0].Destination, amount);
+        }
+
+        /// <summary>
+        /// Signs <paramref name="intent"/>, holds it as pending and sends it with
+        /// <c>sendTonWalletTransaction</c>.
+        /// </summary>
+        private async Task<WalletTransactionResult> SendPreparedAsync(WalletClient client, SendIntent intent, EngineSendMessage[] relayed, string destination, BigInteger amount)
+        {
             PreparedTransfer prepared;
 
             try
@@ -1102,13 +1183,6 @@ namespace Telegram.Services.Wallet
             var external = Bytes(prepared.ExternalBoc);
             var gasless = relayed != null ? Bytes(prepared.InternalBoc) : Array.Empty<byte>();
 
-            var amount = BigInteger.Zero;
-
-            foreach (var message in messages)
-            {
-                amount += message.GramAmount;
-            }
-
             TaskCompletionSource<bool> outcome;
 
             // Held as pending like a transfer, so nothing else is signed against the same seqno
@@ -1116,7 +1190,7 @@ namespace Telegram.Services.Wallet
             await _mutex.WaitAsync();
             try
             {
-                AddPending(messages[0].DestinationAddress, 0, null, amount, string.Empty, false, relayed != null, prepared.OperationId, prepared.ValidUntil);
+                AddPending(destination, 0, null, amount, string.Empty, false, relayed != null, prepared.OperationId, prepared.ValidUntil);
                 SetState(Project());
 
                 // Asynchronous continuations, because it is completed under the lock.
@@ -1134,7 +1208,8 @@ namespace Telegram.Services.Wallet
             await CompleteTransferAsync(prepared.OperationId, request);
 
             // Only a refusal means it never left; anything else is settled by the history.
-            if (await request is Error error && error.Code >= 400 && error.Code < 500)
+            var response = await request;
+            if (response is Error error && error.Code >= 400 && error.Code < 500)
             {
                 return new WalletTransactionResult(WalletTransactionStatus.Refused, error: error);
             }

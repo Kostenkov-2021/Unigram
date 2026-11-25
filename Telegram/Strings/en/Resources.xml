@@ -14652,6 +14652,9 @@
     <string name="WalletConfirm">Confirm</string>
     <string name="WalletCancel">Cancel</string>
     <string name="WalletTransfer">Transfer</string>
+    <string name="WalletSell">Sell</string>
+    <string name="WalletTransferCollectible">Transfer Collectible</string>
+    <string name="WalletCollectibleTransferPrepareFailed">Unable to prepare collectible transfer</string>
     <string name="WalletPreview">Preview</string>
     <string name="WalletContractCall">Contract call</string>
     <string name="WalletContractDeploy">Contract deploy</string>

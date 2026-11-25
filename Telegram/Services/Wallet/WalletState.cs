@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
 using Telegram.Td.Api;
+using EngineSendMessage = WalletEngine.SendMessage;
 
 namespace Telegram.Services.Wallet
 {
@@ -472,5 +473,22 @@ namespace Telegram.Services.Wallet
         /// The account's refusal; only for <see cref="WalletTransactionStatus.Refused"/>.
         /// </summary>
         public Error Error { get; }
+    }
+
+    /// <summary>
+    /// A collectible's transfer as the engine built and emulated it, for
+    /// <see cref="IWalletService.SendNftTransferAsync"/> to sign.
+    /// </summary>
+    public sealed class WalletNftTransfer
+    {
+        internal WalletNftTransfer(EngineSendMessage[] messages, BigInteger feeNanograms)
+        {
+            Messages = messages;
+            FeeNanograms = feeNanograms;
+        }
+
+        public BigInteger FeeNanograms { get; }
+
+        internal EngineSendMessage[] Messages { get; }
     }
 }

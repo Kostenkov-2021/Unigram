@@ -25,7 +25,8 @@ namespace Telegram.Common
     /// <summary>
     /// Gifts bought, listed and delisted on-chain, and on-chain offers answered: TDLib prepares the
     /// wallet messages, the wallet signs them unchanged, and sendTonWalletTransaction sends them.
-    /// What TDLib sends back is not the outcome: that is known once the transaction lands.
+    /// What TDLib sends back is not the outcome: that is known once the transaction lands. Other
+    /// collectibles go out the same way, from a transfer the wallet engine builds instead.
     /// </summary>
     public static class GiftOnChainHelper
     {
@@ -222,6 +223,73 @@ namespace Telegram.Common
                     string.Format(Strings.GiftOnchainFailed, name),
                     new DelayedFileSource(clientService, gift.Model.Sticker));
 
+                return true;
+            }
+        }
+
+        #endregion
+
+        #region Collectibles
+
+        /// <summary>
+        /// Transfers an NFT that is not a gift, to an address or .ton name the user types. True once
+        /// it is sent.
+        /// </summary>
+        public static async Task<bool> TransferCollectibleAsync(IClientService clientService, INavigationService navigation, TonNft collectible)
+        {
+            var wallet = clientService.Session.Resolve<IWalletService>();
+
+            var recipient = await WalletHelper.AskRecipientAsync(navigation, wallet, Strings.WalletTransferCollectible);
+            if (recipient == null)
+            {
+                return false;
+            }
+
+            var xamlRoot = navigation.XamlRoot;
+
+            // Emulated before anything is shown: one the wallet cannot send, because it is on sale,
+            // not held directly or failing on the item, is never offered for confirmation.
+            var transfer = await wallet.PreviewNftTransferAsync(collectible.Address, recipient.Address);
+            if (transfer == null)
+            {
+                await navigation.ShowPopupAsync(Strings.WalletCollectibleTransferPrepareFailed, Strings.WalletTransferCollectible, Strings.OK);
+                return false;
+            }
+
+            var name = string.IsNullOrEmpty(collectible.Name)
+                ? Strings.WalletCollectible
+                : collectible.Name;
+
+            GiftOnChainConfirmPopup popup = null;
+            var sent = false;
+
+            popup = new GiftOnChainConfirmPopup(
+                Strings.WalletTransferCollectible,
+                string.Empty,
+                string.Format(Strings.WalletSendAmount, name),
+                SendAsync);
+
+            popup.AddRow(Strings.WalletCollectible, name);
+            popup.AddRow(Strings.WalletRecipient, string.IsNullOrEmpty(recipient.Domain)
+                ? WalletHelper.DisplayAddress(recipient.Address)
+                : recipient.Domain);
+            popup.SetFee((long)transfer.FeeNanograms);
+
+            await navigation.ShowPopupAsync(popup);
+
+            return sent;
+
+            async Task<bool> SendAsync()
+            {
+                var result = await GiftOnChainHelper.SendAsync(clientService, navigation, popup.XamlRoot, (service, lease) => service.SendNftTransferAsync(transfer, lease), null, null);
+                if (result == null)
+                {
+                    return false;
+                }
+
+                sent = true;
+
+                _ = ReportFailureAsync(xamlRoot, result.Outcome, Strings.WalletTransferFailed, null);
                 return true;
             }
         }
@@ -823,7 +891,14 @@ namespace Telegram.Common
         /// <summary>
         /// Signs and sends, saying why when it doesn't. Null unless the transaction was sent.
         /// </summary>
-        private static async Task<WalletTransactionResult> SendAsync(IClientService clientService, INavigationService navigation, XamlRoot xamlRoot, IReadOnlyList<TonWalletMessage> regular, IReadOnlyList<TonWalletMessage> gasless, string notEnough, bool? isFixed)
+        private static Task<WalletTransactionResult> SendAsync(IClientService clientService, INavigationService navigation, XamlRoot xamlRoot, IReadOnlyList<TonWalletMessage> regular, IReadOnlyList<TonWalletMessage> gasless, string notEnough, bool? isFixed)
+        {
+            return SendAsync(clientService, navigation, xamlRoot, (wallet, lease) => wallet.SendTransactionAsync(regular, gasless, lease), notEnough, isFixed);
+        }
+
+        /// <param name="notEnough">What a short balance is said with, formatted with the amount
+        /// needed; null for the title alone.</param>
+        private static async Task<WalletTransactionResult> SendAsync(IClientService clientService, INavigationService navigation, XamlRoot xamlRoot, Func<IWalletService, WalletVault.WalletVaultLease, Task<WalletTransactionResult>> send, string notEnough, bool? isFixed)
         {
             var wallet = clientService.Session.Resolve<IWalletService>();
 
@@ -838,7 +913,7 @@ namespace Telegram.Common
 
             try
             {
-                result = await wallet.SendTransactionAsync(regular, gasless, lease);
+                result = await send(wallet, lease);
             }
             catch (WalletTransferInProgressException)
             {
@@ -1097,7 +1172,11 @@ namespace Telegram.Common
 
         private static async Task ShowNotEnoughAsync(INavigationService navigation, XamlRoot xamlRoot, string format, long required)
         {
-            var confirm = await MessagePopup.ShowNestedAsync(xamlRoot, string.Format(format, GiftHelper.FormatGrams(required)), Strings.WalletNotEnoughGram, Strings.WalletTopUp, Strings.WalletNotNow);
+            var message = format != null
+                ? string.Format(format, GiftHelper.FormatGrams(required))
+                : string.Empty;
+
+            var confirm = await MessagePopup.ShowNestedAsync(xamlRoot, message, Strings.WalletNotEnoughGram, Strings.WalletTopUp, Strings.WalletNotNow);
             if (confirm == ContentDialogResult.Primary)
             {
                 navigation.NavigateToWallet();
