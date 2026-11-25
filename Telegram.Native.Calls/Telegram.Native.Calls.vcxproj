@@ -107,7 +107,9 @@
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <PreprocessorDefinitions>_WINRT_DLL;WIN32_LEAN_AND_MEAN;WINRT_LEAN_AND_MEAN;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_SILENCE_ALL_CXX20_DEPRECATION_WARNINGS;_USE_MATH_DEFINES;TGCALLS_UWP_DESKTOP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalUsingDirectories>$(WindowsSDK_WindowsMetadata);$(AdditionalUsingDirectories)</AdditionalUsingDirectories>
-      <AdditionalIncludeDirectories>.\rnnoise\include;..\Libraries\tgcalls\tgcalls;..\Libraries\tgcalls;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- webrtc.lib carries BoringSSL, so <openssl/...> has to resolve to its headers rather than
+           to the vcpkg openssl port's, which this project does not link. -->
+      <AdditionalIncludeDirectories>.\rnnoise\include;..\Libraries\tgcalls\tgcalls;..\Libraries\tgcalls;$(TelegramVcpkgInstalledDir)include\third_party\boringssl\src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -148,7 +150,6 @@
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\ContentNegotiation.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\CustomDcSctpSocket.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\CustomParameters.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\DirectNetworkingImpl.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\ExternalSignalingConnection.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\InstanceNetworking.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\InstanceV2CompatImpl.h" />
@@ -181,6 +182,9 @@
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\StaticThreads.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupInstanceCustomImpl.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupNetworkManager.h" />
+    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupAv1Decision.h" />
+    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupReferenceFieldTrials.h" />
+    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupVideoPayloadTypes.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\ScreencastSendParameters.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupExternalAudio.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\VideoStatsLog.h" />
@@ -205,12 +209,8 @@
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\CryptoHelper.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\EncryptedConnection.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\Instance.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\InstanceImpl.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\LogSinkImpl.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\Manager.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\MediaManager.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\Message.h" />
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\NetworkManager.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\PlatformContext.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\platform\PlatformInterface.h" />
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\platform\tdesktop\DesktopInterface.h" />
@@ -317,9 +317,6 @@
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\v2\CustomDcSctpSocket.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\v2\DirectNetworkingImpl.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\v2\ExternalSignalingConnection.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -393,6 +390,18 @@
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupNetworkManager.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupAv1Decision.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupReferenceFieldTrials.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupVideoPayloadTypes.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\v2\InstanceNetworking.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\ScreencastSendParameters.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -456,22 +465,10 @@
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\Instance.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\InstanceImpl.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\LogSinkImpl.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\Manager.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\MediaManager.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\Message.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\NetworkManager.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\platform\tdesktop\DesktopInterface.cpp">

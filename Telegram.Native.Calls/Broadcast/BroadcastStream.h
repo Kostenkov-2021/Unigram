@@ -3,7 +3,7 @@
 #include "BroadcastSession.h"
 
 #include "api/scoped_refptr.h"
-#include "api/task_queue/task_queue_factory.h"
+#include "api/environment/environment.h"
 #include "common_audio/resampler/include/push_resampler.h"
 #include "modules/audio_device/include/audio_device.h"
 #include "modules/audio_device/include/audio_device_defines.h"
@@ -84,8 +84,8 @@ namespace broadcast
         void StopPlayout();
 
         std::function<int64_t()> m_nowUs;
-        std::unique_ptr<webrtc::TaskQueueFactory> m_taskQueueFactory;
-        rtc::scoped_refptr<webrtc::AudioDeviceModule> m_device;
+        webrtc::Environment m_env;
+        webrtc::scoped_refptr<webrtc::AudioDeviceModule> m_device;
 
         std::mutex m_lock;
         std::deque<int16_t> m_buffer;

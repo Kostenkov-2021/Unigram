@@ -6,7 +6,9 @@
 #include "macos/Sources/BroadcastMedia/BroadcastMediaIO.h"
 #include "macos/Sources/BroadcastMedia/BroadcastPartHeader.h"
 
-#include "api/task_queue/default_task_queue_factory.h"
+#include "api/audio/audio_view.h"
+#include "api/audio/create_audio_device_module.h"
+#include "api/environment/environment_factory.h"
 
 extern "C"
 {
@@ -246,16 +248,14 @@ namespace broadcast
         }
         else
         {
-            m_resampler.InitializeIfNeeded(rate, kSampleRate, 2);
             m_block.resize(kBlockFrames * 2);
 
             while (m_residual.size() - consumed >= chunk)
             {
-                int written = m_resampler.Resample(m_residual.data() + consumed, chunk, m_block.data(), m_block.size());
-                if (written > 0)
-                {
-                    output.insert(output.end(), m_block.begin(), m_block.begin() + written);
-                }
+                m_resampler.Resample(
+                    webrtc::InterleavedView<const int16_t>(m_residual.data() + consumed, chunk / 2, 2),
+                    webrtc::InterleavedView<int16_t>(m_block.data(), kBlockFrames, 2));
+                output.insert(output.end(), m_block.begin(), m_block.end());
 
                 consumed += chunk;
             }
@@ -266,9 +266,9 @@ namespace broadcast
 
     StreamPlayer::StreamPlayer(std::string const& outputDeviceId, std::function<int64_t()> nowUs)
         : m_nowUs(std::move(nowUs))
-        , m_taskQueueFactory(webrtc::CreateDefaultTaskQueueFactory())
+        , m_env(webrtc::CreateEnvironment())
     {
-        m_device = webrtc::AudioDeviceModule::Create(webrtc::AudioDeviceModule::kPlatformDefaultAudio, m_taskQueueFactory.get());
+        m_device = webrtc::CreateAudioDeviceModule(m_env, webrtc::AudioDeviceModule::kPlatformDefaultAudio);
 
         if (m_device && m_device->Init() == 0)
         {
@@ -423,8 +423,9 @@ namespace broadcast
 
         if (samplesPerSec != kSampleRate)
         {
-            m_resampler.InitializeIfNeeded(kSampleRate, static_cast<int>(samplesPerSec), static_cast<int>(channels));
-            m_resampler.Resample(m_converted.data(), kBlockFrames * channels, output, nSamples * channels);
+            m_resampler.Resample(
+                webrtc::InterleavedView<const int16_t>(m_converted.data(), kBlockFrames, channels),
+                webrtc::InterleavedView<int16_t>(output, nSamples, channels));
         }
 
         return 0;

@@ -21,22 +21,10 @@
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\Instance.cpp">
       <Filter>tgcalls</Filter>
     </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\InstanceImpl.cpp">
-      <Filter>tgcalls</Filter>
-    </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\LogSinkImpl.cpp">
       <Filter>tgcalls</Filter>
     </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\Manager.cpp">
-      <Filter>tgcalls</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\MediaManager.cpp">
-      <Filter>tgcalls</Filter>
-    </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\Message.cpp">
-      <Filter>tgcalls</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\NetworkManager.cpp">
       <Filter>tgcalls</Filter>
     </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\ThreadLocalObject.cpp">
@@ -60,6 +48,18 @@
     <ClCompile Include="VoipVideoCapture.cpp" />
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupNetworkManager.cpp">
       <Filter>tgcalls\group</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupAv1Decision.cpp">
+      <Filter>tgcalls\group</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupReferenceFieldTrials.cpp">
+      <Filter>tgcalls\group</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\GroupVideoPayloadTypes.cpp">
+      <Filter>tgcalls\group</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Libraries\tgcalls\tgcalls\v2\InstanceNetworking.cpp">
+      <Filter>tgcalls\v2</Filter>
     </ClCompile>
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\group\ScreencastSendParameters.cpp">
       <Filter>tgcalls\group</Filter>
@@ -200,9 +200,6 @@
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\ChannelManager.cpp">
       <Filter>tgcalls</Filter>
     </ClCompile>
-    <ClCompile Include="..\Libraries\tgcalls\tgcalls\v2\DirectNetworkingImpl.cpp">
-      <Filter>tgcalls\v2</Filter>
-    </ClCompile>
     <ClCompile Include="VoipVideoOutputSink.cpp" />
     <ClCompile Include="MediaChannelDescriptionsRequestedEventArgs.cpp" />
     <ClCompile Include="..\Libraries\tgcalls\tgcalls\v2\RawTcpSocket.cpp">
@@ -252,22 +249,10 @@
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\Instance.h">
       <Filter>tgcalls</Filter>
     </ClInclude>
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\InstanceImpl.h">
-      <Filter>tgcalls</Filter>
-    </ClInclude>
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\LogSinkImpl.h">
       <Filter>tgcalls</Filter>
     </ClInclude>
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\Manager.h">
-      <Filter>tgcalls</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\MediaManager.h">
-      <Filter>tgcalls</Filter>
-    </ClInclude>
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\Message.h">
-      <Filter>tgcalls</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\NetworkManager.h">
       <Filter>tgcalls</Filter>
     </ClInclude>
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\PlatformContext.h">
@@ -305,6 +290,15 @@
       <Filter>tgcalls\group</Filter>
     </ClInclude>
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupNetworkManager.h">
+      <Filter>tgcalls\group</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupAv1Decision.h">
+      <Filter>tgcalls\group</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupReferenceFieldTrials.h">
+      <Filter>tgcalls\group</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\GroupVideoPayloadTypes.h">
       <Filter>tgcalls\group</Filter>
     </ClInclude>
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\group\ScreencastSendParameters.h">
@@ -475,9 +469,6 @@
     </ClInclude>
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\ChannelManager.h">
       <Filter>tgcalls</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\DirectNetworkingImpl.h">
-      <Filter>tgcalls\v2</Filter>
     </ClInclude>
     <ClInclude Include="..\Libraries\tgcalls\tgcalls\v2\InstanceNetworking.h">
       <Filter>tgcalls\v2</Filter>

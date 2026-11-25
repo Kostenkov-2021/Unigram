@@ -16,6 +16,9 @@
 
 #include "StaticThreads.h"
 
+#include "api/audio/create_audio_device_module.h"
+#include "api/environment/environment_factory.h"
+
 #include "../Telegram.Native/AppModelPaths.h"
 
 #include <algorithm>
@@ -110,6 +113,15 @@ namespace winrt::Telegram::Native::Calls::implementation
         }
 
         impl.videoCapture = GetVideoCaptureImpl(descriptor.VideoCapture());
+
+        // tgcalls builds no platform audio device of its own: without this the call has none. A
+        // screencast is left without it, because only then does tgcalls give it its fake device.
+        if (!m_isScreencast)
+        {
+            impl.createAudioDeviceModule = [](webrtc::TaskQueueFactory*) {
+                return webrtc::CreateAudioDeviceModule(webrtc::CreateEnvironment(), webrtc::AudioDeviceModule::kPlatformDefaultAudio);
+            };
+        }
 
         m_impl = std::make_unique<tgcalls::GroupInstanceCustomImpl>(std::move(impl));
 

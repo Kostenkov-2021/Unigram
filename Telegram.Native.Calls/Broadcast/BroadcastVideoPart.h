@@ -19,7 +19,7 @@ namespace broadcast
         // Seconds after the part's first frame.
         double pts = 0;
         webrtc::VideoRotation rotation = webrtc::kVideoRotation_0;
-        rtc::scoped_refptr<webrtc::I420Buffer> buffer;
+        webrtc::scoped_refptr<webrtc::I420Buffer> buffer;
     };
 
     struct VideoDecoderState;

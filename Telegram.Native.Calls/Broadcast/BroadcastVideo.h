@@ -17,7 +17,7 @@
 
 namespace broadcast
 {
-    using VideoSink = std::weak_ptr<rtc::VideoSinkInterface<webrtc::VideoFrame>>;
+    using VideoSink = std::weak_ptr<webrtc::VideoSinkInterface<webrtc::VideoFrame>>;
 
     class VideoEndpoint;
 
