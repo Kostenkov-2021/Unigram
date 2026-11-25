@@ -179,6 +179,7 @@ namespace Telegram.Controls.Media
 
         public const string Payment16 = "\uE9AB";
         public const string PaymentFilled = "\uF790";
+        public const string PaymentDismissFilled = "\uF7BB";
         public const string Window16 = "\uE9AA";
         public const string WindowFilled16 = "\uEAC5";
         public const string CopyFilled16 = "\uEA97";

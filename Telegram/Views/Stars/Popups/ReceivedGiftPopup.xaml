@@ -451,6 +451,13 @@
                                                      Margin="0,8,0,0"
                                                      Visibility="Collapsed"
                                                      Grid.Row="3" />
+                            <CheckBox x:Name="CollectibleDisplay"
+                                      Click="CollectibleDisplay_Click"
+                                      Content="{CustomResource Gift2AlsoShowInMyGifts}"
+                                      HorizontalAlignment="Center"
+                                      Margin="0,8,0,0"
+                                      Visibility="Collapsed"
+                                      Grid.Row="3" />
                             <controls:TableView x:Name="UpgradedTableRoot"
                                                 Margin="8,8,8,0"
                                                 Grid.Row="1">

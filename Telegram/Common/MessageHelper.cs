@@ -35,6 +35,7 @@ using Telegram.Views.Popups;
 using Telegram.Views.Premium.Popups;
 using Telegram.Views.Settings;
 using Telegram.Views.Stars.Popups;
+using Telegram.Views.Wallet;
 using Telegram.Views.Wallet.Popups;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
@@ -1464,7 +1465,11 @@ namespace Telegram.Common
             }
         }
 
-        public static async void NavigateToUpgradedGift(IClientService clientService, INavigationService navigation, string name)
+        /// <summary>
+        /// Opens the gift sheet for <paramref name="name"/>; for a <paramref name="collectible"/> in the
+        /// wallet, with the wallet's actions on it.
+        /// </summary>
+        public static async void NavigateToUpgradedGift(IClientService clientService, INavigationService navigation, string name, TonNft collectible = null, IWalletCollectibleHost host = null)
         {
             var response = await clientService.SendAsync(new GetUpgradedGift(name));
             if (response is UpgradedGift { IsBurned: true } || response is Error { Message: "STARGIFT_ALREADY_BURNED" })
@@ -1476,7 +1481,14 @@ namespace Telegram.Common
                 var text = gift.OriginalDetails?.Text ?? string.Empty.AsFormattedText();
                 var receivedGift = new ReceivedGift(string.Empty, null, text, 0, true, false, false, false, false, false, false, 0, new SentGiftUpgraded(gift), Array.Empty<int>(), 0, 0, false, 0, 0, 0, 0, 0, string.Empty, 0);
 
-                navigation.ShowPopup(new ReceivedGiftPopup(clientService, navigation, receivedGift, null, null));
+                var popup = new ReceivedGiftPopup(clientService, navigation, receivedGift, null, null);
+
+                if (collectible != null)
+                {
+                    popup.ShowAsCollectible(collectible, host);
+                }
+
+                navigation.ShowPopup(popup);
             }
             else
             {

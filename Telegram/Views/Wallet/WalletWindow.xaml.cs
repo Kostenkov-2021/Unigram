@@ -53,7 +53,7 @@ namespace Telegram.Views.Wallet
     /// a popup opens over the wallet and a page navigation lands in the main window, which is what
     /// the mini apps do.
     /// </remarks>
-    public sealed partial class WalletWindow : WindowContent, IWalletDelegate
+    public sealed partial class WalletWindow : WindowContent, IWalletDelegate, IWalletCollectibleHost
     {
         private readonly IClientService _clientService;
         private readonly IWalletService _wallet;
@@ -834,9 +834,43 @@ namespace Telegram.Views.Wallet
         private void Collectibles_ItemClick(object sender, ItemClickEventArgs e)
         {
             // By name: the NFT's own copy of the gift leaves out the owner.
-            if (e.ClickedItem is TonNft { Gift: UpgradedGift gift })
+            if (e.ClickedItem is TonNft { Gift: UpgradedGift gift } collectible)
             {
-                MessageHelper.NavigateToUpgradedGift(_clientService, _navigationService, gift.Name);
+                MessageHelper.NavigateToUpgradedGift(_clientService, _navigationService, gift.Name, collectible, this);
+            }
+        }
+
+        public bool IsOnCard(TonNft collectible)
+        {
+            return Card.Stickers.Contains(collectible.Address);
+        }
+
+        public bool IsCardColor(TonNft collectible)
+        {
+            return collectible.Address == _backgroundAddress;
+        }
+
+        public void ToggleCard(TonNft collectible)
+        {
+            if (Card.Stickers.Contains(collectible.Address))
+            {
+                RemoveStickerFromCard(collectible);
+            }
+            else
+            {
+                AddToCard(collectible);
+            }
+        }
+
+        public void ToggleColor(TonNft collectible)
+        {
+            if (IsCardColor(collectible))
+            {
+                RemoveColor();
+            }
+            else
+            {
+                ApplyColor(collectible);
             }
         }
 

@@ -12043,6 +12043,10 @@
     <string name="Gift2RarityHint">Only {0} of such collectibles have this attribute</string>
     <string name="Gift2Transfer">Transfer {0}</string>
     <string name="Gift2TransferText">Do you want to transfer ownership of **{0}** to **{1}**?</string>
+    <string name="Gift2TransferShort">Transfer Gift</string>
+    <string name="Gift2MoveToMyGifts">Move to My Gifts</string>
+    <string name="Gift2MoveToMyGiftsText">Transfer this collectible off-chain to your Telegram account?</string>
+    <string name="Gift2AlsoShowInMyGifts">also show in my gifts</string>
     <string name="Gift2TransferPriceText_one">Do you want to transfer ownership of **{1}** to **{2}** for **{0} Star**?</string>
     <string name="Gift2TransferPriceText_other">Do you want to transfer ownership of **{1}** to **{2}** for **{0} Stars**?</string>
     <string name="Gift2TransferDo">Transfer</string>
@@ -12672,6 +12676,7 @@
     <string name="GiftOnchainWalletTitle">Money</string>
     <string name="GiftOnchainOpenWallet">Open My Money</string>
     <string name="WalletNotEnoughGram">Not enough Gram</string>
+    <string name="WalletNotEnoughGramToTransferGift">You need at least {0} to transfer the gift.</string>
     <string name="WalletNotNow">Not now</string>
     <string name="WalletTopUp">Top up</string>
     <string name="GiftMessageAddTitle">Add Message</string>
@@ -14797,6 +14802,8 @@
     <string name="WalletGiftRemoveFromCard">Remove from Card</string>
     <string name="WalletGiftApplyColor">Apply Color</string>
     <string name="WalletGiftRemoveColor">Remove Color</string>
+    <string name="WalletGiftColorOnly">Only {0} and {1} can be used to change the color of your card.</string>
+    <string name="WalletGiftColorOnlyOne">Only {0} can be used to change the color of your card.</string>
     <string name="WalletConnectNoWallet">You need a wallet to connect apps.</string>
     <string name="WalletConnectFailed">Could not connect to this app.</string>
     <string name="WalletDisconnectConfirm">Are you sure you want to disconnect **{0}**?</string>

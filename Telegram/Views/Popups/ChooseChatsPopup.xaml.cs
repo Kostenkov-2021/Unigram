@@ -520,6 +520,19 @@ namespace Telegram.Views.Popups
         public ReceivedGift Gift { get; }
     }
 
+    /// <summary>
+    /// A gift in the wallet, sent to a Telegram account.
+    /// </summary>
+    public partial class ChooseChatsConfigurationDepositGift : ChooseChatsConfiguration
+    {
+        public ChooseChatsConfigurationDepositGift(UpgradedGift gift)
+        {
+            Gift = gift;
+        }
+
+        public UpgradedGift Gift { get; }
+    }
+
     public partial class ChooseChatsConfigurationCreateGroupCall : ChooseChatsConfiguration
     {
 
@@ -1197,6 +1210,19 @@ namespace Telegram.Views.Popups
                 button.Click += ExportGift_Click;
                 Header = button;
             }
+            else if (ViewModel.Configuration is ChooseChatsConfigurationDepositGift)
+            {
+                var button = new SettingsButton
+                {
+                    Content = Strings.Gift2MoveToMyGifts,
+                    Glyph = Icons.PersonFilled,
+                    Style = BootStrapper.Current.Resources["GlyphBadgeButtonPopupStyle"] as Style,
+                    Margin = new Thickness(12, 0, 12, 0),
+                };
+
+                button.Click += MoveToMyGifts_Click;
+                Header = button;
+            }
 
             if (ViewModel.Configuration is ChooseChatsConfigurationShareOperation
                 && LifetimeService.Current.Count > 1
@@ -1228,6 +1254,20 @@ namespace Telegram.Views.Popups
             {
                 Hide();
                 GiftHelper.Export(ViewModel.ClientService, ViewModel.NavigationService, transferGift.Gift);
+            }
+        }
+
+        private void MoveToMyGifts_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is SettingsButton button)
+            {
+                button.Click -= MoveToMyGifts_Click;
+            }
+
+            if (ViewModel.Configuration is ChooseChatsConfigurationDepositGift depositGift)
+            {
+                Hide();
+                _ = GiftOnChainHelper.DepositAsync(ViewModel.ClientService, ViewModel.NavigationService, depositGift.Gift, new MessageSenderUser(ViewModel.ClientService.Options.MyId));
             }
         }
 

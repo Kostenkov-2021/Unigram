@@ -6,8 +6,10 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 using System.Threading.Tasks;
 using Telegram.Common;
 using Telegram.Controls;
@@ -25,6 +27,7 @@ using Telegram.Views.Chats.Popups;
 using Telegram.Views.Gifts.Popups;
 using Telegram.Views.Popups;
 using Telegram.Views.Premium.Popups;
+using Telegram.Views.Wallet;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.UI;
@@ -96,6 +99,10 @@ namespace Telegram.Views.Stars.Popups
         // wear and share it, but nothing that would move it.
         private bool _hosted;
 
+        // Opened from the wallet holding the gift: its actions are the wallet's, on its card.
+        private TonNft _collectible;
+        private IWalletCollectibleHost _collectibleHost;
+
         public ReceivedGiftPopup(IClientService clientService, INavigationService navigationService, ReceivedGift gift, MessageSender receiverId, MessageSender sendGiftTo, ProfileGiftsTabViewModel profile = null, bool fromMessage = false)
         {
             InitializeComponent();
@@ -135,6 +142,43 @@ namespace Telegram.Views.Stars.Popups
                 // The sale price depends on the subtitle InitializeUpgraded has just decided on.
                 UpdateVisibility();
             }
+        }
+
+        /// <summary>
+        /// Shows the gift as <paramref name="collectible"/>, held by the wallet behind
+        /// <paramref name="host"/>: transfer, card colour and sticker for actions, and a choice
+        /// to show it among the user's gifts in place of the links to the blockchain.
+        /// </summary>
+        public void ShowAsCollectible(TonNft collectible, IWalletCollectibleHost host)
+        {
+            if (_gift.Gift is not SentGiftUpgraded upgraded)
+            {
+                return;
+            }
+
+            _collectible = collectible;
+            _collectibleHost = host;
+
+            UpgradedButtons.Visibility = Visibility.Visible;
+            TransferButton.Opacity = 1;
+
+            var color = host.IsCardColor(collectible);
+
+            // Left in place when it cannot colour the card, so that it can say which gifts can.
+            WearButton.Glyph = Icons.ColorFilled24;
+            WearButton.Content = color ? Strings.WalletGiftRemoveColor : Strings.WalletGiftApplyColor;
+            WearButton.Opacity = color || upgraded.Gift.CanBeTonWalletCardBackground ? 1 : 0.5;
+
+            var onCard = host.IsOnCard(collectible);
+
+            ResellButton.Glyph = onCard ? Icons.PaymentDismissFilled : Icons.PaymentFilled;
+            ResellButton.Content = onCard ? Strings.WalletGiftRemoveFromCard : Strings.WalletGiftAddToCard;
+
+            UpgradedBlockchain.Visibility = Visibility.Collapsed;
+            CollectibleDisplay.IsChecked = upgraded.Gift.HostId != null;
+            CollectibleDisplay.Visibility = Visibility.Visible;
+
+            PrimaryButtonText = GetUpgradedPrimaryButtonText(upgraded.Gift);
         }
 
         private void UpdateOwned()
@@ -736,7 +780,8 @@ namespace Telegram.Views.Stars.Popups
         private string GetUpgradedPrimaryButtonText(UpgradedGift gift)
         {
             // Opened from a link, the current user's own gift arrives without a received gift identifier.
-            return gift.ResaleParameters != null && !_owned
+            // Held by the wallet it was opened from, a sale is the user's own.
+            return gift.ResaleParameters != null && !_owned && _collectible == null
                 ? GiftHelper.IsResaleInGrams(gift)
                     ? string.Format(Strings.ResellGiftBuyTON, GiftHelper.FormatResaleGrams(gift, true)).ReplaceStar(Icons.Gram14)
                     : Locale.Declension(Strings.R.ResellGiftBuy, gift.ResaleParameters.StarCount).ReplaceStar(Icons.Premium)
@@ -884,7 +929,7 @@ namespace Telegram.Views.Stars.Popups
                     Upgrade2();
                 }
             }
-            else if (_gift?.Gift is SentGiftUpgraded { Gift.ResaleParameters: not null } && !_owned)
+            else if (_gift?.Gift is SentGiftUpgraded { Gift.ResaleParameters: not null } && !_owned && _collectible == null)
             {
                 BuyResale();
             }
@@ -2050,6 +2095,101 @@ namespace Telegram.Views.Stars.Popups
             }
         }
 
+        private async void TransferCollectible()
+        {
+            if (_gift.Gift is not SentGiftUpgraded upgraded)
+            {
+                return;
+            }
+
+            var gift = upgraded.Gift;
+
+            if (gift.ResaleParameters != null)
+            {
+                var unlist = gift.UsesOnChainResale && gift.ResaleParameters.CanBeManaged;
+
+                var confirm = await MessagePopup.ShowNestedAsync(XamlRoot, Strings.GiftOnchainTransferUnlistFirst, Strings.Gift2TransferOption, unlist ? Strings.Gift2ActionUnlist : Strings.OK, unlist ? Strings.Cancel : null);
+                if (confirm != ContentDialogResult.Primary || !unlist)
+                {
+                    return;
+                }
+
+                var delisted = await GiftOnChainHelper.DelistAsync(_clientService, _navigationService, gift);
+                if (delisted)
+                {
+                    Hide();
+                }
+
+                return;
+            }
+
+            Hide();
+            _navigationService.ShowPopup(new ChooseChatsPopup(), new ChooseChatsConfigurationDepositGift(gift));
+        }
+
+        private async void ToggleCollectibleColor(UpgradedGift gift)
+        {
+            if (!_collectibleHost.IsCardColor(_collectible) && !gift.CanBeTonWalletCardBackground)
+            {
+                var response = await _clientService.SendAsync(new GetTonWalletCardBackgroundGiftCollectionNames());
+                if (response is UpgradedGiftCollectionNames { Names.Count: > 0 } collections)
+                {
+                    ToastPopup.Show(XamlRoot, FormatColorCollections(collections.Names), ToastPopupIcon.Info);
+                }
+
+                return;
+            }
+
+            // The sheet goes first, so that the card can be seen taking the colour.
+            Hide();
+            await Task.Delay(250);
+
+            _collectibleHost.ToggleColor(_collectible);
+        }
+
+        private static string FormatColorCollections(IReadOnlyList<string> names)
+        {
+            if (names.Count == 1)
+            {
+                return string.Format(Strings.WalletGiftColorOnlyOne, names[0]);
+            }
+
+            var first = new StringBuilder(names[0]);
+
+            for (int i = 1; i < names.Count - 1; i++)
+            {
+                first.Append(", ").Append(names[i]);
+            }
+
+            return string.Format(Strings.WalletGiftColorOnly, first, names[names.Count - 1]);
+        }
+
+        private async void ToggleCollectibleCard()
+        {
+            Hide();
+            await Task.Delay(250);
+
+            _collectibleHost.ToggleCard(_collectible);
+        }
+
+        private async void CollectibleDisplay_Click(object sender, RoutedEventArgs e)
+        {
+            if (_gift.Gift is not SentGiftUpgraded upgraded)
+            {
+                return;
+            }
+
+            var display = CollectibleDisplay.IsChecked == true;
+            var ownerId = display ? new MessageSenderUser(_clientService.Options.MyId) : null;
+
+            var response = await _clientService.SendAsync(new DisplayUpgradedGift(ownerId, upgraded.Gift.Name));
+            if (response is Error error)
+            {
+                CollectibleDisplay.IsChecked = !display;
+                ToastPopup.ShowError(XamlRoot, error);
+            }
+        }
+
         private async void OfferToBuy()
         {
             if (_gift.Gift is not SentGiftUpgraded upgraded)
@@ -2210,7 +2350,11 @@ namespace Telegram.Views.Stars.Popups
 
         private void TransferButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_owned)
+            if (_collectible != null)
+            {
+                TransferCollectible();
+            }
+            else if (_owned)
             {
                 Transfer();
             }
@@ -2261,7 +2405,11 @@ namespace Telegram.Views.Stars.Popups
                 return;
             }
 
-            if (_shownWearInfo || IsWorn(_clientService, upgraded.Gift))
+            if (_collectible != null)
+            {
+                ToggleCollectibleColor(upgraded.Gift);
+            }
+            else if (_shownWearInfo || IsWorn(_clientService, upgraded.Gift))
             {
                 ToggleWear();
             }
@@ -2413,7 +2561,11 @@ namespace Telegram.Views.Stars.Popups
 
         private void ResellButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_owned)
+            if (_collectible != null)
+            {
+                ToggleCollectibleCard();
+            }
+            else if (_owned)
             {
                 Resell();
             }

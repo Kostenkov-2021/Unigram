@@ -30,7 +30,7 @@ namespace Telegram.Common
     public static class GiftOnChainHelper
     {
         // Fees paid on top of the value, and errors in the action phase ignored.
-        private const int FragmentSendMode = 3;
+        private const int NftSendMode = 3;
 
         private static readonly TimeSpan RequestDebounce = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan SentHold = TimeSpan.FromSeconds(60);
@@ -158,6 +158,69 @@ namespace Telegram.Common
                     recipient != null ? string.Format(Strings.GiftOnchainBoughtTo, name, recipient) : string.Format(Strings.GiftOnchainBought, name),
                     string.Format(Strings.GiftOnchainFailed, name),
                     sticker);
+
+                return true;
+            }
+        }
+
+        #endregion
+
+        #region Deposit
+
+        /// <summary>
+        /// Sends a gift from the wallet to a Telegram account: <paramref name="ownerId"/>'s, or the
+        /// current user's own. True once the transaction is sent.
+        /// </summary>
+        public static async Task<bool> DepositAsync(IClientService clientService, INavigationService navigation, UpgradedGift gift, MessageSender ownerId)
+        {
+            var xamlRoot = navigation.XamlRoot;
+
+            var response = await clientService.SendAsync(new GetUpgradedGiftDepositInfo(ownerId, gift.Name, false));
+            if (response is not UpgradedGiftDepositInfo info || string.IsNullOrEmpty(info.NftAddress))
+            {
+                ShowError(clientService, navigation, xamlRoot, response as Error, null);
+                return false;
+            }
+
+            // What the message carries beyond the fees comes back to the wallet.
+            var regular = new[] { new TonWalletMessage(info.NftAddress, info.GramAmount, NftSendMode, info.Payload ?? Array.Empty<byte>(), null) };
+
+            var wallet = clientService.Session.Resolve<IWalletService>();
+            var name = gift.ToName();
+            var self = ownerId.IsUser(clientService.Options.MyId);
+            var recipient = clientService.GetTitle(ownerId);
+
+            GiftOnChainConfirmPopup popup = null;
+            var sent = false;
+
+            popup = new GiftOnChainConfirmPopup(
+                self ? Strings.Gift2MoveToMyGifts : Strings.Gift2TransferShort,
+                self ? Strings.Gift2MoveToMyGiftsText : string.Format(Strings.Gift2TransferText, name, recipient),
+                self ? Strings.Gift2MoveToMyGifts : Strings.Gift2TransferDo,
+                SendAsync);
+
+            AddAttributes(popup, gift);
+
+            _ = EstimateFeeAsync(wallet, popup, regular);
+
+            await navigation.ShowPopupAsync(popup);
+
+            return sent;
+
+            async Task<bool> SendAsync()
+            {
+                var result = await GiftOnChainHelper.SendAsync(clientService, navigation, popup.XamlRoot, regular, null, Strings.WalletNotEnoughGramToTransferGift, null);
+                if (result == null)
+                {
+                    return false;
+                }
+
+                sent = true;
+
+                _ = ReportAsync(xamlRoot, result.Outcome,
+                    string.Format("**{0}**\n{1}", Strings.Gift2TransferredTitle, string.Format(Strings.Gift2TransferredText, name, recipient)),
+                    string.Format(Strings.GiftOnchainFailed, name),
+                    new DelayedFileSource(clientService, gift.Model.Sticker));
 
                 return true;
             }
@@ -819,7 +882,7 @@ namespace Telegram.Common
                     // One message to the item, carrying the price and the payload. Sent as a regular
                     // transfer whatever is_gasless_transfer_available says: a relayed form would be
                     // a message of its own, and TDLib provides none.
-                    regular = new[] { new TonWalletMessage(fragment.NftAddress, fragment.GramAmount, FragmentSendMode, fragment.Payload ?? Array.Empty<byte>(), null) };
+                    regular = new[] { new TonWalletMessage(fragment.NftAddress, fragment.GramAmount, NftSendMode, fragment.Payload ?? Array.Empty<byte>(), null) };
                     gasless = null;
                     return true;
                 case GiftOnChainSaleTransactionFixedPrice fixedPrice when fixedPrice.Messages.Count > 0:

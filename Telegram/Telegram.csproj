@@ -1992,6 +1992,7 @@
     <Compile Include="Views\Wallet\Popups\WalletConnectedAppsPopup.xaml.cs">
       <DependentUpon>WalletConnectedAppsPopup.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\Wallet\IWalletCollectibleHost.cs" />
     <Compile Include="Views\Wallet\IWalletTransferSite.cs" />
     <Compile Include="Views\Wallet\WalletPendingRow.cs" />
     <Compile Include="Views\Wallet\WalletSparks.cs" />

@@ -330,6 +330,15 @@ namespace Telegram.ViewModels
 
                         break;
                     }
+                case ChooseChatsConfigurationDepositGift:
+                    SelectionMode = ListViewSelectionMode.None;
+                    Options = ChooseChatsOptions.UsersAndChannels;
+                    ShouldCloseOnCommit = false;
+                    IsCommentEnabled = false;
+                    IsChatSelection = false;
+
+                    Title = Strings.Gift2TransferShort;
+                    break;
 
                 case ChooseChatsConfigurationCreateGroupCall:
                     SelectionMode = ListViewSelectionMode.Multiple;
@@ -900,6 +909,11 @@ namespace Telegram.ViewModels
                     NavigationService.HidePopup(typeof(ChooseChatsPopup));
                     await TransferGiftPopup.TransferAsync(ClientService, NavigationService, transferGift.Gift, chats[0]);
                 }
+            }
+            else if (_configuration is ChooseChatsConfigurationDepositGift depositGift)
+            {
+                NavigationService.HidePopup(typeof(ChooseChatsPopup));
+                await GiftOnChainHelper.DepositAsync(ClientService, NavigationService, depositGift.Gift, chats[0].ToMessageSender());
             }
             else if (_configuration is ChooseChatsConfigurationCreateGroupCall)
             {
